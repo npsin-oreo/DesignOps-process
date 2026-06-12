@@ -34,10 +34,15 @@ into a **structured requirement + working prototype** automatically — complete
                       │  intelligence.json   │  ← validate_intelligence.py (gate + cross-dim invariants)
                       └──────────┬──────────┘
                                │
-                               ▼  Step 3   ── map components from design_directives (not raw features)
+                               ▼  Step 3   ── refine user flows from directives
                       ┌─────────────────────┐
-                      │ design-first-draft.md│
+                      │  flows.json          │  ← validate_flows.py
                       └──────────┬──────────┘
+                               ▼  Step 3.5 ── screens from flows (flow→screen coverage)
+                      ┌──────────────────────────────┐
+                      │ screen-inventory.json        │  ← validate_screens.py
+                      │ + design-first-draft.md      │
+                      └──────────┬───────────────────┘
                                │
                                ▼  Step 4   ── scaffold Next.js prototype (POC component library)
                       ┌─────────────────────┐
@@ -240,7 +245,9 @@ Converts tokens (hex → oklch) into a whitelabel handoff repo and rebuilds it �
 | `brief.md` | Designer / PM review | 1+2 |
 | `brief.json` | AI agent (facts) | 1+2 |
 | `intelligence.json` | AI agent (design_directives) | 2.5 |
-| `design-first-draft.md` | Designer iteration | 3 |
+| `flows.json` | AI agent (refined flows) | 3 |
+| `screen-inventory.json` | AI agent (build manifest) | 3.5 |
+| `design-first-draft.md` | Designer iteration | 3.5 |
 | `prototype/` | Dev (Next.js app) | 4 |
 | `prototype/docs/critique.md` | Designer / Dev | 4.6 |
 | `prototype/docs/audit-report.md` | QA / Lead | 4.7 |

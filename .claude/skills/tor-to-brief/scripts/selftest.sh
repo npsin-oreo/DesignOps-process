@@ -31,7 +31,7 @@ for s in "$RUN" "$SCRIPTS_DIR/setup-prototype.sh" "$0"; do
   [ -f "$s" ] || continue
   /bin/bash -n "$s" 2>/dev/null && ok "syntax: $(basename "$s")" || bad "syntax: $(basename "$s")"
 done
-for p in "$VALIDATE" "$VALIDATE_INTEL"; do
+for p in "$VALIDATE" "$VALIDATE_INTEL" "$SCRIPTS_DIR/validate_flows.py" "$SCRIPTS_DIR/validate_screens.py"; do
   python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$p" 2>/dev/null && ok "parses: $(basename "$p")" || bad "parses: $(basename "$p")"
 done
 # bash-4-only constructs that silently break on 3.2
@@ -76,7 +76,7 @@ if [ -f "$SAMPLE_TOR" ]; then
   CLAUDECODE=1 /bin/bash "$RUN" --tor "$SAMPLE_TOR" --out "$OUT" >"$OUT/log.txt" 2>&1
   rc=$?
   [ "$rc" = "0" ] && ok "prep run exit 0" || bad "prep run exit $rc"
-  [ -f "$OUT/.prompt_step1.txt" ] && [ -f "$OUT/.prompt_intel.txt" ] && [ -f "$OUT/.prompt_step3.txt" ] && ok "step1 + step2.5 + step3 prompts staged" || bad "prompts not staged"
+  [ -f "$OUT/.prompt_step1.txt" ] && [ -f "$OUT/.prompt_intel.txt" ] && [ -f "$OUT/.prompt_flows.txt" ] && [ -f "$OUT/.prompt_step3.txt" ] && ok "step1 + 2.5 + flows + screens prompts staged" || bad "prompts not staged"
   grep -q "AGENT ACTIONS" "$OUT/log.txt" && ok "AGENT ACTIONS checklist printed" || bad "no AGENT ACTIONS block"
 else
   bad "sample-tor.md missing — cannot run T4"
@@ -119,6 +119,35 @@ python3 "$VALIDATE_INTEL" "$TMP/i_bad2.json" >/dev/null 2>&1 && bad "a11y rollup
 # missing top-level key
 python3 -c "import json;d=json.load(open('$TMP/intel.json'));d.pop('design_directives');json.dump(d,open('$TMP/i_bad3.json','w'))"
 python3 "$VALIDATE_INTEL" "$TMP/i_bad3.json" >/dev/null 2>&1 && bad "missing design_directives should fail" || ok "missing required key → exit 1"
+
+# ── T7. Flows gate (Step 3) ───────────────────────────────────────────────────
+echo "[T7] flows gate — valid passes, nav_model mismatch fails"
+cat > "$TMP/i2.json" <<'PY'
+{"meta":{},"user_types":[{"id":"UT01"}],"user_goals":[{"id":"G01"}],"core_tasks":[],
+ "workflow_complexity":{},"data_density":{},"error_tolerance":{},"accessibility_needs":{},
+ "compliance_requirements":[],"decision_criticality":{},
+ "design_directives":{"navigation_model":"hub_spoke","mandatory_flows":["consent"]}}
+PY
+cat > "$TMP/flows.json" <<'PY'
+{"meta":{},"navigation_model":"hub_spoke","flows":[
+ {"id":"FL01","name":"Book","source_flow_ref":"UF01","user_type_ref":"UT01","goal_ref":"G01","steps":[{"n":1,"action":"pick","decision":false,"safeguard":null}],"entry":"home","exit":"done","directives_applied":[]},
+ {"id":"FL02","name":"Consent","source_flow_ref":null,"user_type_ref":"UT01","goal_ref":"G01","steps":[{"n":1,"action":"accept","decision":true,"safeguard":"opt-in"}],"entry":"first","exit":"home","directives_applied":["mandatory"]}],
+ "mandatory_flows":[{"name":"consent","reason":"PDPA","injected":true}]}
+PY
+python3 "$SCRIPTS_DIR/validate_flows.py" "$TMP/flows.json" "$TMP/i2.json" >/dev/null 2>&1 && ok "valid flows → exit 0" || bad "valid flows should pass"
+python3 -c "import json;d=json.load(open('$TMP/flows.json'));d['navigation_model']='single';json.dump(d,open('$TMP/fl_bad.json','w'))"
+python3 "$SCRIPTS_DIR/validate_flows.py" "$TMP/fl_bad.json" "$TMP/i2.json" >/dev/null 2>&1 && bad "nav mismatch should fail" || ok "nav_model must match directive → exit 1"
+
+# ── T8. Screens gate (Step 3.5) ───────────────────────────────────────────────
+echo "[T8] screens gate — valid passes, coverage gap fails"
+cat > "$TMP/screens.json" <<'PY'
+{"meta":{},"screens":[
+ {"id":"SC01","name":"Book","flow_refs":["FL01"],"user_type_ref":"UT01","priority":"Must","purpose":"x","layout_primitive":"form","components":["Card"],"gaps":[],"directive_drivers":[]},
+ {"id":"SC02","name":"Consent","flow_refs":["FL02"],"user_type_ref":"UT01","priority":"Must","purpose":"x","layout_primitive":"card","components":["Card","Checkbox"],"gaps":[],"directive_drivers":[]}]}
+PY
+python3 "$SCRIPTS_DIR/validate_screens.py" "$TMP/screens.json" "$TMP/flows.json" >/dev/null 2>&1 && ok "valid screens (full coverage) → exit 0" || bad "valid screens should pass"
+python3 -c "import json;d=json.load(open('$TMP/screens.json'));d['screens']=d['screens'][:1];json.dump(d,open('$TMP/sc_bad.json','w'))"
+python3 "$SCRIPTS_DIR/validate_screens.py" "$TMP/sc_bad.json" "$TMP/flows.json" >/dev/null 2>&1 && bad "uncovered flow should fail" || ok "flow→screen coverage enforced → exit 1"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

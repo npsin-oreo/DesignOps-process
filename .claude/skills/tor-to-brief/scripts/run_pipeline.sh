@@ -231,10 +231,41 @@ if [[ -f "$INTEL_JSON" ]]; then
   }
   log "✓ intelligence.json valid"
 elif [[ -f "$BRIEF_JSON" ]]; then
-  log "intelligence.json not generated yet — Component Mapping (Step 3) needs its design_directives"
+  log "intelligence.json not generated yet — flows (Step 3) need its design_directives"
 fi
 
-# ── step 3: brief + DS → design draft ────────────────────────────────────────
+# ── step 3 (Flows): brief + intelligence → flows.json ─────────────────────────
+# Refines the brief's raw user_flows using design_directives (navigation_model,
+# safeguard_level, mandatory_flows). No design system needed yet.
+FLOWS_JSON="$OUT_DIR/flows.json"
+if [[ ! -f "$FLOWS_JSON" ]]; then
+  step "Step 3 — User Flows (brief + intelligence → flows.json)"
+  PROMPT_FLOWS="$OUT_DIR/.prompt_flows.txt"
+  cat > "$PROMPT_FLOWS" << PROMPT
+Read "$BRIEF_JSON" (user_flows) and "$INTEL_JSON" (design_directives, core_tasks), then
+produce "$FLOWS_JSON" — refined user flows, NOT raw copies.
+
+Refine each brief.user_flow using design_directives:
+- navigation_model → echo it at top + shape entry/exit and how flows connect (hub_spoke = home hub + spokes)
+- safeguard_level → inject confirm / preview / undo steps on risky actions (mark step.safeguard)
+- mandatory_flows → ADD an injected flow per directive (e.g. consent, privacy_notice) with source_flow_ref:null
+- decision_criticality decision_points → mark step.decision:true where the user commits a high-stakes choice
+
+Shape per flows.json: { meta, navigation_model, flows:[{id,name,source_flow_ref,user_type_ref,goal_ref,
+steps:[{n,action,decision,safeguard}],entry,exit,directives_applied:[]}], mandatory_flows:[{name,reason,injected}] }
+Each flow.user_type_ref/goal_ref must resolve into intelligence.json. Every design_directives.mandatory_flow must appear as an injected flow.
+PROMPT
+  _generate "$PROMPT_FLOWS" "Step 3 — refine user flows" "$FLOWS_JSON"
+fi
+if [[ -f "$FLOWS_JSON" ]]; then
+  step "Validating flows.json"
+  python3 "$SKILL_DIR/scripts/validate_flows.py" "$FLOWS_JSON" "$INTEL_JSON" "$BRIEF_JSON" || {
+    err "flows.json validation failed — fix it first, or re-run Step 3"
+  }
+  log "✓ flows.json valid"
+fi
+
+# ── step 3.5 (Screen Inventory): flows + intelligence + DS → screens + draft ───
 # Auto-resolve DS if not provided
 if [[ -z "$DS_PATH" ]]; then
   DS_PATH="$(_resolve_default_ds)"
@@ -244,7 +275,7 @@ if [[ -z "$DS_PATH" ]]; then
 fi
 
 if [[ -n "$DS_PATH" ]]; then
-  step "Step 3 — Reading design system & generating first draft"
+  step "Step 3.5 — Screen Inventory & Component Mapping (flows + DS)"
 
   # resolve github URL → clone
   if [[ "$DS_PATH" =~ ^https://github.com ]]; then
@@ -339,48 +370,53 @@ PYEOF
   # in this same run, so don't embed a possibly-stale copy).
   PROMPT3_FILE="$OUT_DIR/.prompt_step3.txt"
 
+  SCREENS_JSON="$OUT_DIR/screen-inventory.json"
   cat > "$PROMPT3_FILE" << PROMPT
-Read "$BRIEF_JSON" (facts), "$INTEL_JSON" (Product Intelligence — Step 2.5), and the
-design system inventory below, then produce "$OUT_DIR/design-first-draft.md".
+Read "$FLOWS_JSON" (refined flows — Step 3), "$INTEL_JSON" (design_directives), and the
+design system inventory below, then produce TWO artifacts:
+  1. "$SCREENS_JSON"           — machine screen inventory (gated)
+  2. "$OUT_DIR/design-first-draft.md" — the human-readable breakdown built FROM it
 
-Drive Component Mapping from intelligence.json → design_directives, NOT from raw features:
-- density_target     → layout primitive (cards / table+virtualization / dashboard)
-- safeguard_level    → confirm / undo / preview-before-commit patterns
-- guidance_level     → onboarding, empty-state copy, tooltip density
-- navigation_model   → app shell (single / wizard / hub_spoke / workspace)
-- a11y_target        → component variants + the audit target for Step 4.7
-- mandatory_flows    → screens you MUST inject (e.g. consent, audit_log)
-- trust_emphasis     → evidence-on-demand / transparency affordances
-Map per user_type + core_task (from intelligence.json), not per feature in isolation.
-If meta.overall_confidence=low (constrain_downstream), produce wireframe-level output + flag a human gate.
+Derive screens from FLOWS (each flow → its screens), driving every decision from design_directives:
+- density_target   → layout_primitive (card / table / dashboard / form / list / detail)
+- safeguard_level  → confirm / undo / preview patterns on the screen
+- navigation_model → how screens connect (hub_spoke = home hub + spoke screens)
+- a11y_target      → component variants + the Step 4.7 audit target
+- mandatory_flows  → each injected flow gets its screen(s) (e.g. consent, privacy_notice)
+- trust_emphasis   → evidence-on-demand / transparency affordances
+Coverage rule: EVERY flow in flows.json must have at least one screen; every screen.flow_refs must resolve.
+If meta.overall_confidence=low (constrain_downstream), produce wireframe-level screens + flag a human gate.
+
+screen-inventory.json shape: { meta, screens:[{id,name,flow_refs:[],user_type_ref,priority:Must|Should|Could,
+purpose, layout_primitive, components:[from the DS inventory], gaps:[{name,status:missing|partial,recommendation}],
+directive_drivers:[]}] }
 
 design system path: $DS_PATH
 design system inventory:
 $DS_INVENTORY
 
-Produce design-first-draft.md containing:
-1. Screen Inventory — screens per user_type/task with priority, citing the design_directives that shaped them
-2. Screen Breakdown — per screen: purpose, user flow, layout, component usage (JSX), design decisions (tie each to a directive)
-3. Component Gap Report — components present in the DS vs ones that must be built
-4. Token Usage Guide — design tokens to use in each context
+design-first-draft.md (human view) must contain: Screen Inventory table · Screen Breakdown (per screen: purpose, flow, layout, JSX, decisions tied to a directive) · Component Gap Report · Token Usage Guide.
 
-If the design system is shadcn-skills-design-starter, read its root CLAUDE.md first.
-CLAUDE.md describes component patterns, the Figma→Tailwind token map, and naming conventions.
-The component list is in components/ui/.
-The token reference is in .claude/skills/shadcn-ui-design/references/DESIGN.md
+If the design system is shadcn-skills-design-starter, read its root CLAUDE.md first (patterns, Figma→Tailwind token map, naming).
+The component list is in components/ui/. Token reference: .claude/skills/shadcn-ui-design/references/DESIGN.md.
 
 rules:
-- Use only components that actually exist in the inventory
-- If a component is missing → record it in the gap report as "🔴 Missing"
-- A partially available component → "🟡 Partial" with a recommendation
-- Don't invent components
+- Use only components that exist in the inventory; missing → gap "missing"; partial → "partial" + recommendation; don't invent components.
 PROMPT
 
-  _generate "$PROMPT3_FILE" "Step 3 — brief + DS → design-first-draft" "$OUT_DIR/design-first-draft.md"
+  _generate "$PROMPT3_FILE" "Step 3.5 — flows + DS → screen-inventory + draft" "$SCREENS_JSON + $OUT_DIR/design-first-draft.md"
+
+  if [[ -f "$SCREENS_JSON" ]]; then
+    step "Validating screen-inventory.json"
+    python3 "$SKILL_DIR/scripts/validate_screens.py" "$SCREENS_JSON" "$FLOWS_JSON" || {
+      err "screen-inventory.json validation failed — fix it first, or re-run Step 3.5"
+    }
+    log "✓ screen-inventory.json valid"
+  fi
 
 else
-  log "--ds not provided → skipping step 3"
-  log "Run step 3 later with: run_pipeline.sh --brief $BRIEF_JSON --ds <path> --out $OUT_DIR"
+  log "--ds not provided → skipping Step 3.5 (screen inventory)"
+  log "Run later with: run_pipeline.sh --brief $BRIEF_JSON --ds <path> --out $OUT_DIR"
 fi
 
 # ── step 4.5: token bridge → hand-off repo ───────────────────────────────────

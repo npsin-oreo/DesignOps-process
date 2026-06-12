@@ -59,7 +59,7 @@ Full spec: `.claude/skills/tor-to-brief/commands/generate-prototype.md`
 ### tor-to-brief
 Turns a TOR → design brief → first draft → POC prototype automatically, with a **quality loop**.
 
-**Pipeline:** Step 1+2 brief (facts) → **Step 2.5 Product Intelligence Layer** (`intelligence.json` → `design_directives`) → Step 3 draft (maps from directives) → Step 4 prototype → **Step 4.6 critique** → **Step 4.7 audit gate (token + WCAG)** → Step 5 Figma
+**Pipeline:** Step 1+2 brief (facts) → **Step 2.5 Product Intelligence** (`intelligence.json` → `design_directives`) → **Step 3 Flows** (`flows.json`, refined from directives) → **Step 3.5 Screen Inventory** (`screen-inventory.json` + `design-first-draft.md`, flow→screen coverage) → Step 4 prototype → **Step 4.6 critique** → **Step 4.7 audit gate** → Step 5 Figma. Each stage has its own JSON artifact + validator gate.
 
 **Product Intelligence Layer** (Step 2.5) infers 10 measurable dimensions (user types/expertise/goals/tasks, workflow complexity, data density, error tolerance, accessibility, compliance, decision criticality) → an open `design_directives` object. Replaces the old fixed industry presets; industry-agnostic. Spec: `references/intelligence-layer.md`; gate: `scripts/validate_intelligence.py`.
 

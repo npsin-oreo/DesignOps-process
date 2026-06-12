@@ -38,11 +38,15 @@ TOR (PDF / DOCX / Notion / GDocs)
                     │  intelligence.json  │  10 dims → design_directives
                     └──────────┬──────────┘
                                │  validate_intelligence.py (+ cross-dim invariants)
-                               ▼  Step 3  (consumes design_directives)
+                               ▼  Step 3  Flows (refine user_flows from directives)
                     ┌─────────────────────┐
-                    │  design-first-      │
-                    │  draft.md           │
+                    │  flows.json         │  ← validate_flows.py
                     └──────────┬──────────┘
+                               ▼  Step 3.5  Screen Inventory & Component Mapping
+                    ┌──────────────────────────────┐
+                    │  screen-inventory.json       │  ← validate_screens.py (flow→screen coverage)
+                    │  + design-first-draft.md     │     (human breakdown view)
+                    └──────────┬───────────────────┘
                                │
                                ▼  Step 4
               ┌────────────────────────────────┐
@@ -388,9 +392,42 @@ If `overall_confidence=low`, the gate emits `constrain_downstream=true` → Step
 
 ---
 
-## Step 3 — Design Draft Generator
+## Step 3 — User Flows
 
-Takes `brief.json` + `intelligence.json` (`design_directives`) + a design system path → `design-first-draft.md`. **Map components from `design_directives`, not raw features** (density → layout, safeguard_level → confirm/undo, navigation_model → shell, a11y_target → variants + audit target, mandatory_flows → injected screens).
+Takes `brief.json` (raw `user_flows`) + `intelligence.json` (`design_directives`) → **`flows.json`** — flows *refined* by the directives, not raw copies. No design system needed yet.
+
+Refine each flow:
+- `navigation_model` → echo it + shape how flows connect (hub_spoke = home hub + spokes)
+- `safeguard_level` → inject confirm / preview / undo steps on risky actions (`step.safeguard`)
+- `mandatory_flows` → **add an injected flow** per directive (consent, privacy_notice…) with `source_flow_ref:null`
+- `decision_criticality` decision points → mark `step.decision:true` where the user commits a high-stakes choice
+
+```jsonc
+flows.json = { meta, navigation_model,
+  flows: [{ id, name, source_flow_ref, user_type_ref, goal_ref,
+            steps: [{ n, action, decision, safeguard }], entry, exit, directives_applied: [] }],
+  mandatory_flows: [{ name, reason, injected }] }
+```
+
+Gate: `validate_flows.py {OUTPUT_DIR}/flows.json {OUTPUT_DIR}/intelligence.json {OUTPUT_DIR}/brief.json`
+(checks nav_model matches the directive, refs resolve, every directive `mandatory_flow` appears).
+
+---
+
+## Step 3.5 — Screen Inventory & Component Mapping
+
+Takes `flows.json` + `intelligence.json` + a design system → **`screen-inventory.json`** (machine, gated) **+ `design-first-draft.md`** (the human breakdown rendered from it). **Derive screens from flows** (each flow → its screens), mapping components from `design_directives`, not raw features.
+
+```jsonc
+screen-inventory.json = { meta, screens: [{ id, name, flow_refs: [], user_type_ref,
+  priority: "Must|Should|Could", purpose, layout_primitive,   // card|table|dashboard|form|list|detail|wizard_step|hub
+  components: [<from DS inventory>], gaps: [{ name, status: "missing|partial", recommendation }],
+  directive_drivers: [] }] }
+```
+
+**Coverage rule (enforced):** every flow in `flows.json` must have ≥1 screen; every `screen.flow_refs` must resolve.
+
+Gate: `validate_screens.py {OUTPUT_DIR}/screen-inventory.json {OUTPUT_DIR}/flows.json`.
 
 ### Design system input
 

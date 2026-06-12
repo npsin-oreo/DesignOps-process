@@ -20,8 +20,13 @@ Read these files in order. Stop and report if any required file is missing.
 ```
 1. output/brief.json                  ← facts: personas · features · flows · scoring
 2. output/intelligence.json           ← design_directives (density, a11y, safeguards, nav, mandatory_flows)
-3. output/design-first-draft.md       ← screen inventory · component decisions · gap report
+3. output/flows.json                   ← refined user flows (Step 3)
+4. output/screen-inventory.json        ← the build manifest: screens, flow_refs, layout_primitive, components, gaps
+5. output/design-first-draft.md        ← human breakdown (JSX, decisions) for reference
 ```
+
+Build from `screen-inventory.json` (one page per screen; `layout_primitive` → the shell;
+`components` → the imports; `gaps` → GapPlaceholder). Cross-check the human draft for JSX detail.
 
 **Read `design_directives` from `intelligence.json`** (Step 2.5) — it drives the whole build:
 | directive | drives |

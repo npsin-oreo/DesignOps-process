@@ -1,6 +1,54 @@
 # Critique Framework Reference — DesignOps Loop
 
-Read this file when entering CRITIQUE mode — especially for complex contexts (HIS, Dashboard, Multi-screen).
+Read this file when entering CRITIQUE mode (Step 4.6) — for any screen, dashboard, or multi-screen flow.
+
+A critique has two parts: a **scored review** (the rubric below — produces a number + a findings
+table) and the **detailed checklist** (the 4 layers further down — what to actually look at).
+Always run the scored review first; use the layers to find the specifics.
+
+---
+
+## Scored Review (do this first)
+
+> Full rubric + Nielsen tables + the review process live in `design-review.md`. Summary:
+
+Score every main screen 1–10 across **six weighted dimensions**, then compute the overall:
+
+| # | Dimension | Weight |
+|---|-----------|--------|
+| 1 | Visual Hierarchy | 20% |
+| 2 | Consistency (token + pattern adherence) | 20% |
+| 3 | Accessibility (WCAG 2.2 to `design_directives.a11y_target`) | 20% |
+| 4 | Usability (task efficiency, error prevention, cognitive load) | 20% |
+| 5 | Responsiveness (mobile-first, reflow at 320px, touch targets) | 10% |
+| 6 | Performance (loading/skeleton states, animation efficiency) | 10% |
+
+```
+Overall = H×0.2 + Consistency×0.2 + A11y×0.2 + Usability×0.2 + Responsive×0.1 + Perf×0.1
+```
+9–10 ship-ready · 7–8 minor polish · 5–6 rework before ship · ≤4 significant rework.
+
+Then run **Nielsen's 10 heuristics** (table in `design-review.md`) and flag each violation by number
+(H1…H10) in the findings table. Output a prioritized findings table:
+
+| # | Severity | Category | Location | Finding | Recommendation | Heuristic |
+|---|----------|----------|----------|---------|---------------|-----------|
+
+Severity: **Critical** (blocks users / P0 a11y) → **Major** → **Minor** → **Enhancement**.
+
+### Anti-slop gate (taste, not just correctness)
+
+Before accepting a screen, check it against the **Banned Defaults** + Anti-AI-Pattern tells in
+`aesthetics/taste/design-taste.md`. Any of these is a **Major** finding — the screen reads as
+machine-generated until fixed:
+- pure `#000`/`#fff` instead of off-black/warm-white surfaces · generic drop shadow on every box
+- three identical equal-weight cards · everything centered · repeated Left-text/Right-image rows
+- rainbow of accents (keep one primary + one accent) · colored left-border accent strips on alerts/cards
+- emoji used as icons (use lucide SVG) · em-dashes and marketing filler in UI copy ("seamless", "elevate")
+- fake structure labels ("SECTION 01", lorem ipsum) · cramped vertical rhythm
+
+The screen must also earn `aesthetic.json.brief_inference.mood_adjective` (Step 2.6). If it doesn't,
+that's the first finding.
 
 ---
 

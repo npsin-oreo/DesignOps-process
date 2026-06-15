@@ -1,0 +1,178 @@
+
+AI & LLM (14)
+  claude                   Anthropic's AI assistant. Warm terracotta accent, clean edit
+  cohere                   Enterprise AI platform. Vibrant gradients, data-rich dashboa
+  elevenlabs               AI voice platform. Dark cinematic UI, audio-waveform aesthet
+  huggingface              ML community hub. Sunny yellow accent, monospace identity, c
+  minimax                  AI model provider. Bold dark interface with neon accents.
+  mistral-ai               Open-weight LLM provider. French-engineered minimalism, purp
+  ollama                   Run LLMs locally. Terminal-first, monochrome simplicity.
+  openai                   Calm, near-monochrome system anchored in deep teal-black wit
+  opencode-ai              AI coding platform. Developer-centric dark theme.
+  replicate                Run ML models via API. Clean white canvas, code-forward.
+  runwayml                 AI video generation. Cinematic dark UI, media-rich layout.
+  together-ai              Open-source AI infrastructure. Technical, blueprint-style de
+  voltagent                AI agent framework. Void-black canvas, emerald accent, termi
+  x-ai                     Elon Musk's AI lab. Stark monochrome, futuristic minimalism.
+
+Automotive (6)
+  bmw                      Luxury automotive. Dark premium surfaces, precise German eng
+  bugatti                  Hypercar brand. Cinema-black canvas, monochrome austerity, m
+  ferrari                  Luxury automotive. Chiaroscuro editorial, Ferrari Red accent
+  lamborghini              Supercar brand. True black surfaces, gold accents, dramatic 
+  renault                  French automotive. Vibrant aurora gradients, NouvelR typogra
+  tesla                    Electric automotive. Radical subtraction, full-viewport phot
+
+Backend & Data (8)
+  clickhouse               Fast analytics database. Yellow-accented, technical document
+  composio                 Tool integration platform. Modern dark with colorful integra
+  hashicorp                Infrastructure automation. Enterprise-clean, black and white
+  mongodb                  Document database. Green leaf branding, developer documentat
+  posthog                  Product analytics. Playful hedgehog branding, developer-frie
+  sanity                   Headless CMS. Red accent, content-first editorial layout.
+  sentry                   Error monitoring. Dark dashboard, data-dense, pink-purple ac
+  supabase                 Open-source Firebase alternative. Dark emerald theme, code-f
+
+Bold & Expressive (8)
+  bold                     Strong visual presence with heavyweight typography, high-con
+  brutalism                Raw, anti-design aesthetic inspired by concrete architecture
+  colorful                 Vibrant, high-contrast palettes and gradients for engaging, 
+  dramatic                 High-contrast, theatrical design with bold layouts, immersiv
+  energetic                Dynamic, vibrant style with thick borders, geometric shapes,
+  expressive               Vibrant, personality-driven design with bold colors, playful
+  neobrutalism             Modern take on brutalism with bold borders, vivid accent col
+  vibrant                  Lively, colorful design with bold playful typography, warm a
+
+Creative & Artistic (11)
+  artistic                 High-contrast, expressive style with creative typography and
+  cafe                     Cozy cafe-inspired interface with warm tones, soft typograph
+  cosmic                   Futuristic sci-fi aesthetic with dark themes, vibrant neon a
+  creative                 Playful, character-driven design with expressive typography 
+  doodle                   Hand-drawn, sketch-like style with doodles, handwritten font
+  editorial                Magazine-inspired editorial layout with refined serif typogr
+  fantasy                  Game-inspired fantasy aesthetic with bold, premium visuals, 
+  friendly                 Approachable, intuitive design with rounded elements, ample 
+  lingo                    Playful, minimal design with bright colors, rounded shapes, 
+  publication              Print-inspired visual language for books, magazines, and rep
+  storytelling             Narrative-driven design using visuals, copy, and interaction
+
+Design & Creative (7)
+  airtable                 Spreadsheet-database hybrid. Colorful, friendly, structured 
+  canva                    Visual creation platform. Vivid purple-blue gradient, genero
+  clay                     Creative agency. Organic shapes, soft gradients, art-directe
+  figma                    Collaborative design tool. Vibrant multi-color, playful yet 
+  framer                   Website builder. Bold black and blue, motion-first, design-f
+  miro                     Visual collaboration. Bright yellow accent, infinite canvas 
+  webflow                  Visual web builder. Blue-accented, polished marketing site a
+
+Developer Tools (8)
+  cursor                   AI-first code editor. Sleek dark interface, gradient accents
+  expo                     React Native platform. Dark theme, tight letter-spacing, cod
+  github                   Code-forward platform. Functional density, blue-on-white pre
+  lovable                  AI full-stack builder. Playful gradients, friendly dev aesth
+  raycast                  Productivity launcher. Sleek dark chrome, vibrant gradient a
+  superhuman               Fast email client. Premium dark UI, keyboard-first, purple g
+  vercel                   Frontend deployment. Black and white precision, Geist font.
+  warp                     Modern terminal. Dark IDE-like interface, block-based comman
+
+E-Commerce & Retail (5)
+  airbnb                   Travel marketplace. Warm coral accent, photography-driven, r
+  meta                     Tech retail store. Photography-first, binary light/dark surf
+  nike                     Athletic retail. Monochrome UI, massive uppercase type, full
+  shopify                  E-commerce platform. Dark-first cinematic, neon green accent
+  starbucks                Global coffee retail brand. Four-tier green system, warm cre
+
+Editorial & Print (1)
+  kami                     Editorial paper system: warm parchment canvas, ink-blue acce
+
+Editorial · Studio (1)
+  atelier-zero             A magazine-grade, collage-driven visual system: warm paper c
+
+Fintech & Crypto (7)
+  binance                  Crypto exchange. Bold yellow accent on monochrome, trading-f
+  coinbase                 Crypto exchange. Clean blue identity, trust-focused, institu
+  kraken                   Crypto trading. Purple-accented dark UI, data-dense dashboar
+  mastercard               Global payments network. Warm cream canvas, orbital pill sha
+  revolut                  Digital banking. Sleek dark interface, gradient cards, finte
+  stripe                   Payment infrastructure. Signature purple gradients, weight-3
+  wise                     Money transfer. Bright green accent, friendly and clear.
+
+Layout & Structure (4)
+  bento                    Modular grid layout with card-like blocks, clear hierarchy, 
+  levels                   Conversion-focused design that removes friction and guides u
+  perspective              Spatial depth design with isometric views, vanishing points,
+  spacious                 Generous whitespace, consistent padding, and grid-based layo
+
+Media & Consumer (12)
+  apple                    Consumer electronics. Premium white space, SF Pro, cinematic
+  ibm                      Enterprise technology. Carbon design system, structured blue
+  nvidia                   GPU computing. Green-black energy, technical power aesthetic
+  pinterest                Visual discovery. Red accent, masonry grid, image-first.
+  playstation              Gaming console retail. Three-surface channel layout, quiet-a
+  spacex                   Space technology. Stark black and white, full-bleed imagery,
+  spotify                  Music streaming. Vibrant green on dark, bold type, album-art
+  theverge                 Tech editorial media. Acid-mint and ultraviolet accents, Man
+  uber                     Mobility platform. Bold black and white, tight type, urban e
+  vodafone                 Global telecom brand. Monumental uppercase display, Vodafone
+  wired                    Tech magazine. Paper-white broadsheet density, custom serif 
+  xiaohongshu              Lifestyle UGC social platform. Singular brand red, generous 
+
+Modern & Minimal (10)
+  clean                    Simplicity-focused design with ample whitespace, legible typ
+  contemporary             Current-era minimalist design with bento grids, dark mode su
+  flat                     Two-dimensional minimalist style with vibrant colors, clean 
+  minimal                  Stripped-back design emphasizing whitespace, clean typograph
+  modern                   Contemporary editorial style with serif typography, minimal 
+  mono                     Monospace-driven, matrix-inspired design with high-contrast 
+  refined                  Carefully curated, modern minimal style with elegant serif t
+  shadcn                   Shadcn/ui-inspired design with minimal, clean components, mo
+  simple                   Straightforward, no-frills design with clean typography, neu
+  sleek                    Modern minimalist aesthetic with clean lines, intentional co
+
+Morphism & Effects (6)
+  claymorphism             Soft, rounded 3D-like shapes mimicking malleable clay with p
+  glassmorphism            Frosted glass effect with translucent layers, subtle blur, a
+  gradient                 Smooth color transitions and gradient-rich surfaces for mode
+  neon                     Electric neon glow effects with high-contrast color pairings
+  neumorphism              Soft, extruded UI elements with inner and outer shadows on m
+  skeumorphism             Real-world mimicry with textured surfaces, 3D effects, and f
+
+Productivity & SaaS (10)
+  arc                      "The browser that browses for you." Translucent surfaces, gr
+  cal                      Open-source scheduling. Clean neutral UI, developer-oriented
+  discord                  Voice / chat platform. Deep blurple, dark-first surfaces, pl
+  duolingo                 Language-learning platform. Bright owl green, chunky shadows
+  intercom                 Customer messaging. Friendly blue palette, conversational UI
+  linear-app               Project management. Ultra-minimal, precise, purple accent.
+  mintlify                 Documentation platform. Clean, green-accented, reading-optim
+  notion                   All-in-one workspace. Warm minimalism, serif headings, soft 
+  resend                   Email API. Minimal dark theme, monospace accents.
+  zapier                   Automation platform. Warm orange, friendly illustration-driv
+
+Professional & Corporate (10)
+  ant                      Structured, enterprise-focused design system emphasizing cla
+  application              App dashboard with purple-themed aesthetic, top-bar navigati
+  corporate                Professional, brand-aligned design with structured grids, mi
+  dashboard                Dark-themed cloud-platform aesthetic with modular grids, gla
+  elegant                  Graceful, refined aesthetic with delicate typography, minima
+  enterprise               Clean, high-contrast enterprise design for data-driven workf
+  luxury                   High-end dark aesthetic with bold headings, monochromatic pa
+  material                 Google's Material Design with layered surfaces, dynamic them
+  premium                  Apple-inspired premium aesthetic with precise spacing, moder
+  professional             Polished, business-ready design with modern typography, stru
+
+Retro & Nostalgic (4)
+  dithered                 Dot-pattern rendering technique that simulates shades with a
+  paper                    Paper-textured, print-inspired design with minimal colors, c
+  retro                    Throwback design with vintage-inspired typography, high-cont
+  vintage                  1950s-1990s nostalgia with skeuomorphic touches, grainy text
+
+Starter (2)
+  default                  A clean, product-oriented default. Use when the brief doesn'
+  warm-editorial           A serif-led magazine aesthetic. Terracotta accent on warm of
+
+Themed & Unique (4)
+  agentic                  Conversational AI-first interface with minimal controls, cle
+  futuristic               Forward-looking design with tech-inspired typography, modern
+  pacman                   Retro arcade-inspired design with pixel fonts, dotted border
+  tetris                   Classic block-game inspired design with playful colors, bold

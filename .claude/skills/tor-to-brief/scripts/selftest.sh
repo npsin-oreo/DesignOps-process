@@ -31,7 +31,7 @@ for s in "$RUN" "$SCRIPTS_DIR/setup-prototype.sh" "$0"; do
   [ -f "$s" ] || continue
   /bin/bash -n "$s" 2>/dev/null && ok "syntax: $(basename "$s")" || bad "syntax: $(basename "$s")"
 done
-for p in "$VALIDATE" "$VALIDATE_INTEL" "$SCRIPTS_DIR/validate_flows.py" "$SCRIPTS_DIR/validate_screens.py"; do
+for p in "$VALIDATE" "$VALIDATE_INTEL" "$SCRIPTS_DIR/validate_flows.py" "$SCRIPTS_DIR/validate_screens.py" "$SCRIPTS_DIR/validate_aesthetic.py" "$SCRIPTS_DIR/audit_prototype.py" "$SCRIPTS_DIR/lint_hardcodes.py"; do
   python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$p" 2>/dev/null && ok "parses: $(basename "$p")" || bad "parses: $(basename "$p")"
 done
 # bash-4-only constructs that silently break on 3.2
@@ -76,7 +76,7 @@ if [ -f "$SAMPLE_TOR" ]; then
   CLAUDECODE=1 /bin/bash "$RUN" --tor "$SAMPLE_TOR" --out "$OUT" >"$OUT/log.txt" 2>&1
   rc=$?
   [ "$rc" = "0" ] && ok "prep run exit 0" || bad "prep run exit $rc"
-  [ -f "$OUT/.prompt_step1.txt" ] && [ -f "$OUT/.prompt_intel.txt" ] && [ -f "$OUT/.prompt_flows.txt" ] && [ -f "$OUT/.prompt_step3.txt" ] && ok "step1 + 2.5 + flows + screens prompts staged" || bad "prompts not staged"
+  [ -f "$OUT/.prompt_step1.txt" ] && [ -f "$OUT/.prompt_intel.txt" ] && [ -f "$OUT/.prompt_aesthetic.txt" ] && [ -f "$OUT/.prompt_flows.txt" ] && [ -f "$OUT/.prompt_step3.txt" ] && ok "step1 + 2.5 + 2.6 + flows + screens prompts staged" || bad "prompts not staged"
   grep -q "AGENT ACTIONS" "$OUT/log.txt" && ok "AGENT ACTIONS checklist printed" || bad "no AGENT ACTIONS block"
 else
   bad "sample-tor.md missing — cannot run T4"
@@ -148,6 +148,75 @@ PY
 python3 "$SCRIPTS_DIR/validate_screens.py" "$TMP/screens.json" "$TMP/flows.json" >/dev/null 2>&1 && ok "valid screens (full coverage) → exit 0" || bad "valid screens should pass"
 python3 -c "import json;d=json.load(open('$TMP/screens.json'));d['screens']=d['screens'][:1];json.dump(d,open('$TMP/sc_bad.json','w'))"
 python3 "$SCRIPTS_DIR/validate_screens.py" "$TMP/sc_bad.json" "$TMP/flows.json" >/dev/null 2>&1 && bad "uncovered flow should fail" || ok "flow→screen coverage enforced → exit 1"
+
+# ── T9. Aesthetic gate (Step 2.6) ─────────────────────────────────────────────
+echo "[T9] aesthetic gate — valid passes, fake brand + low contrast fails"
+# brand library must be vendored for a named_system to resolve
+[ -d "$SCRIPTS_DIR/../references/aesthetics/design-systems/library" ] && ok "brand library vendored" || bad "brand library not vendored"
+cat > "$TMP/aes_intel.json" <<'PY'
+{"design_directives":{"a11y_target":"AA","density_target":4}}
+PY
+cat > "$TMP/aesthetic.json" <<'PY'
+{"meta":{"version":"1"},
+ "brief_inference":{"domain":"dev SaaS","audience_tone":"technical","mood_adjective":"precise","motion_depth":"subtle","rationale":"trust+experts → calm engineered system"},
+ "direction":{"type":"named_system","name":"linear-app","category":"Productivity & SaaS","spec_ref":"references/aesthetics/design-systems/library/linear-app/DESIGN.md","why_fit":"expert, dense, high trust"},
+ "tokens":{"primary":"oklch(0.55 0.18 264)","background":"oklch(0.16 0.01 264)","foreground":"oklch(0.97 0 0)","radius":"0.5rem","font_sans":"Inter, sans-serif"},
+ "contrast_checks":[{"pair":"foreground/background","fg_hex":"#f7f7f8","bg_hex":"#191a23"},{"pair":"primary-foreground/primary","fg_hex":"#ffffff","bg_hex":"#5b5bd6"}],
+ "constraints":{"a11y_target":"AA","density_target":4},
+ "brand_config":{"project_name":"Devflow","primary":"oklch(0.55 0.18 264)","radius":"0.5rem","font_sans":"Inter, sans-serif"}}
+PY
+python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aesthetic.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "valid aesthetic → exit 0" || bad "valid aesthetic should pass"
+# fake brand must fail (does not resolve in the vendored library)
+python3 -c "import json;d=json.load(open('$TMP/aesthetic.json'));d['direction']['name']='totally-made-up';json.dump(d,open('$TMP/aes_brand.json','w'))"
+python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aes_brand.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && bad "fake brand should fail" || ok "named_system must resolve in library → exit 1"
+# contrast computed from hex must gate (not the self-reported number)
+python3 -c "import json;d=json.load(open('$TMP/aesthetic.json'));d['contrast_checks'][0]['fg_hex']='#3a3b45';json.dump(d,open('$TMP/aes_contrast.json','w'))"
+python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aes_contrast.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && bad "low contrast should fail" || ok "contrast recomputed from hex enforced → exit 1"
+# a11y_target must echo design_directives
+python3 -c "import json;d=json.load(open('$TMP/aesthetic.json'));d['constraints']['a11y_target']='AAA';json.dump(d,open('$TMP/aes_a11y.json','w'))"
+python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aes_a11y.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && bad "a11y mismatch should fail" || ok "a11y_target must equal directive → exit 1"
+
+# ── T10. Audit gate (Step 4.7) — runs real scripts over a fake prototype ──────
+echo "[T10] audit gate — clean passes, hardcode + low-contrast block"
+PROTO="$TMP/proto"; mkdir -p "$PROTO/app" "$PROTO/components"
+# a theme with strong contrast (near-black text on white, light + dark)
+cat > "$PROTO/app/globals.css" <<'CSS'
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.15 0 0);
+  --primary: oklch(0.2 0 0);
+  --primary-foreground: oklch(0.98 0 0);
+}
+.dark {
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.98 0 0);
+  --primary: oklch(0.9 0 0);
+  --primary-foreground: oklch(0.15 0 0);
+}
+CSS
+# a clean screen — only token refs, no hardcodes
+cat > "$PROTO/app/page.tsx" <<'TSX'
+export default function Page() {
+  return <div className="bg-background text-foreground">hello</div>;
+}
+TSX
+python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA >/dev/null 2>&1 && ok "clean prototype → exit 0 (PASS)" || bad "clean prototype should pass"
+# inject a hardcoded hex + a raw palette utility → token gate must block
+cat > "$PROTO/app/bad.tsx" <<'TSX'
+export const C = () => <div style={{ color: "#ff0000" }} className="bg-gray-500">x</div>;
+TSX
+python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA >/dev/null 2>&1 && bad "hardcode should block" || ok "hardcoded hex + bg-gray-500 → exit 1 (BLOCKED)"
+rm -f "$PROTO/app/bad.tsx"
+# low-contrast theme (foreground ~ background) → contrast gate must block
+cat > "$PROTO/app/globals.css" <<'CSS'
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.9 0 0);
+  --primary: oklch(0.95 0 0);
+  --primary-foreground: oklch(0.92 0 0);
+}
+CSS
+python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA >/dev/null 2>&1 && bad "low contrast should block" || ok "foreground≈background → exit 1 (BLOCKED)"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

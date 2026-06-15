@@ -49,8 +49,13 @@ If `meta.overall_confidence=low` → produce wireframe-level output + flag a hum
 
 **`brand.config.json` lookup order:**
 1. `./brand.config.json` (project root)
-2. `./output/brand.config.json`
+2. `./output/brand.config.json`  ← auto-written by pipeline **Step 2.6 (Aesthetic Direction)**
 3. `./.claude/brand.config.json`
+
+> If the pipeline ran Step 2.6, `output/aesthetic.json` holds the full chosen direction —
+> the named system / archetype, the `mood_adjective` the screens must earn, and
+> contrast-verified tokens. `output/brand.config.json` is its ready-to-apply subset.
+> Read `aesthetic.json` for the *why* (mood, motion, why_fit) before generating screens.
 
 If found → apply overrides in Step 1.  
 If not found → continue with neutral theme defaults, log:
@@ -341,17 +346,24 @@ Run through every generated file and verify:
 
 ## Step 5.6 — Audit gate (before handoff)
 
-> Read `../references/audit-checklist.md` — this is a **gate**: any 🔴 CRITICAL remaining blocks handoff.
+> **Run the objective gate — it writes the report and decides PASS/BLOCKED:**
+> ```bash
+> python3 .claude/skills/tor-to-brief/scripts/audit_prototype.py \
+>   output/prototype --a11y <AA|AAA> --report output/prototype/docs/audit-report.md
+> ```
+> Exit 1 = BLOCKED. It recomputes WCAG contrast from `globals.css` (oklch→sRGB, light + dark) and
+> lints the screens for hardcoded values — A + B are machine-checked. Then read
+> `../references/audit-checklist.md` for the qualitative C items and append them to the report.
 
 | Category | Checks | gate |
 |----------|--------|------|
-| A. Token Compliance | No hardcoded hex/px · radius/shadow follow tokens | 🔴 block |
-| B. A11y / WCAG `[AA\|AAA per preset]` | contrast · keyboard · focus ring · alt/aria · 44px touch | 🔴 block |
-| C. Component Quality | naming · complete states · no avoidable `any` | 🟡 note |
+| A. Token Compliance | `audit_prototype.py`→`lint_hardcodes.py`: no raw hex/px/ms or `bg-gray-500`-style palette | 🔴 block (script) |
+| B. A11y / WCAG `[AA\|AAA]` | `audit_prototype.py` contrast on essential fg/bg pairs, light + dark | 🔴 block (script) |
+| C. Component Quality | naming · complete states · no avoidable `any` | 🟡 note (agent) |
 
-- `government` preset → audit at WCAG **AAA**, others at AA
-- Write `output/prototype/docs/audit-report.md`
-- If **BLOCKED** → loop back, fix, re-audit until it passes, then write the handoff doc
+- a11y target from `aesthetic.json`/`intelligence.json` `design_directives.a11y_target` (AAA for public-sector)
+- The script writes `output/prototype/docs/audit-report.md`
+- If **BLOCKED** (exit 1) → loop back, fix, re-run until exit 0, then write the handoff doc
 
 ## Step 6 — Generate handoff doc
 

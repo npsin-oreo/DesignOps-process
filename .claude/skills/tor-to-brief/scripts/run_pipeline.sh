@@ -234,6 +234,66 @@ elif [[ -f "$BRIEF_JSON" ]]; then
   log "intelligence.json not generated yet — flows (Step 3) need its design_directives"
 fi
 
+# ── step 2.6 (Aesthetic): brief + intelligence → aesthetic.json ───────────────
+# Picks a *visual direction* (one of 138 named systems in the brand library, or an
+# archetype) and resolves it into concrete, contrast-checked tokens. This is the
+# "taste" layer that design_directives (functional) does not cover — it gives the
+# prototype a real look instead of the neutral shadcn default ("design slop").
+AESTHETIC_JSON="$OUT_DIR/aesthetic.json"
+AESTHETICS_DIR="$SKILL_DIR/references/aesthetics"
+# Stage whenever a brief exists (like flows/intelligence) — the prompt references
+# intelligence.json by PATH; the agent produces it earlier in the same run.
+if [[ ! -f "$AESTHETIC_JSON" ]]; then
+  step "Step 2.6 — Aesthetic Direction (brief + intelligence → aesthetic.json)"
+  PROMPT_AES="$OUT_DIR/.prompt_aesthetic.txt"
+  cat > "$PROMPT_AES" << PROMPT
+Read "$BRIEF_JSON" (facts) and "$INTEL_JSON" (design_directives, user_types, tone), then
+produce "$AESTHETIC_JSON" — a committed visual direction resolved into concrete tokens.
+
+The brand library (138 named design systems) is vendored at:
+  $AESTHETICS_DIR/design-systems/library/<name>/DESIGN.md
+Browse it with:
+  python3 $AESTHETICS_DIR/scripts/design_systems.py list        # all systems by category
+  python3 $AESTHETICS_DIR/scripts/design_systems.py search <term>
+  python3 $AESTHETICS_DIR/scripts/design_systems.py show <name>
+
+Process (anti-slop — deciding BEFORE generating; see $AESTHETICS_DIR/taste/design-taste.md):
+1. Brief Inference: name the domain, audience & tone, the ONE mood adjective the result must
+   earn, and motion depth (none|subtle|expressive). Generating before deciding = slop.
+2. Pick a direction that fits the product intelligence — a named_system from the library
+   (read its DESIGN.md) or an archetype from taste/aesthetic-systems.md. Justify the fit
+   against intelligence dimensions (trust_emphasis, user_expertise, data_density, domain).
+3. Resolve to tokens (oklch): primary, background, foreground, radius, font_sans (+ font_mono,
+   accent if the system uses them). For EVERY contrast pair, also give fg_hex + bg_hex so the
+   gate can re-compute the ratio — never self-certify.
+4. Obey constraints: constraints.a11y_target MUST equal design_directives.a11y_target and
+   constraints.density_target MUST equal design_directives.density_target. A brand color that
+   fails the WCAG floor (AA 4.5:1 / AAA 7:1 normal text) must be darkened/lightened —
+   taste never overrides accessibility.
+5. Emit brand_config { project_name, primary, radius, font_sans } — a ready-to-drop
+   brand.config.json whose values EQUAL tokens.* (Step 4 / generate-prototype consumes it).
+
+Shape: { meta, brief_inference{domain,audience_tone,mood_adjective,motion_depth,rationale},
+direction{type,name,category,spec_ref,why_fit}, tokens{...}, contrast_checks:[{pair,fg_hex,bg_hex,ratio,large?,ui?}],
+constraints{a11y_target,density_target}, brand_config{project_name,primary,radius,font_sans} }
+PROMPT
+  _generate "$PROMPT_AES" "Step 2.6 — pick + resolve aesthetic direction" "$AESTHETIC_JSON"
+fi
+
+# validate aesthetic.json (gate) — recomputes contrast from hex, checks brand resolves
+if [[ -f "$AESTHETIC_JSON" ]]; then
+  step "Validating aesthetic.json"
+  python3 "$SKILL_DIR/scripts/validate_aesthetic.py" "$AESTHETIC_JSON" "$INTEL_JSON" || {
+    err "aesthetic.json validation failed — fix it first, or re-run Step 2.6"
+  }
+  log "✓ aesthetic.json valid"
+  # drop brand.config.json at the output root so /generate-prototype picks it up
+  if [[ ! -f "$OUT_DIR/brand.config.json" ]]; then
+    python3 -c "import json,sys; json.dump(json.load(open('$AESTHETIC_JSON'))['brand_config'], open('$OUT_DIR/brand.config.json','w'), indent=2)" \
+      && log "→ wrote $OUT_DIR/brand.config.json (from aesthetic.json)"
+  fi
+fi
+
 # ── step 3 (Flows): brief + intelligence → flows.json ─────────────────────────
 # Refines the brief's raw user_flows using design_directives (navigation_model,
 # safeguard_level, mandatory_flows). No design system needed yet.
@@ -371,11 +431,19 @@ PYEOF
   PROMPT3_FILE="$OUT_DIR/.prompt_step3.txt"
 
   SCREENS_JSON="$OUT_DIR/screen-inventory.json"
+  AES_HINT=""
+  [[ -f "$AESTHETIC_JSON" ]] && AES_HINT="
+Also read "$AESTHETIC_JSON" (Step 2.6 — the chosen visual direction + resolved tokens).
+The Token Usage Guide MUST use aesthetic.json.tokens (primary/background/foreground/radius/
+font_sans), and the screen look/JSX must earn brief_inference.mood_adjective. Do not fall back
+to the neutral shadcn default when an aesthetic.json exists."
+
   cat > "$PROMPT3_FILE" << PROMPT
 Read "$FLOWS_JSON" (refined flows — Step 3), "$INTEL_JSON" (design_directives), and the
 design system inventory below, then produce TWO artifacts:
   1. "$SCREENS_JSON"           — machine screen inventory (gated)
   2. "$OUT_DIR/design-first-draft.md" — the human-readable breakdown built FROM it
+$AES_HINT
 
 Derive screens from FLOWS (each flow → its screens), driving every decision from design_directives:
 - density_target   → layout_primitive (card / table / dashboard / form / list / detail)

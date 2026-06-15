@@ -11,6 +11,8 @@ description: >
   In Claude Code, run `scripts/run_pipeline.sh` to chain all 3 steps automatically.
   Step 2.5 (Product Intelligence Layer) infers 10 measurable product dimensions and derives an
   open design_directives object (density, a11y target, safeguards, navigation) — industry-agnostic.
+  Step 2.6 (Aesthetic Direction) picks one of 138 named design systems or an archetype and resolves
+  it into concrete, contrast-checked tokens (the visual/taste layer) → aesthetic.json + brand.config.json.
   Step 4 builds a POC prototype from a ready-made component library + mock data,
   Step 4.6 runs a 4-layer critique, Step 4.7 is an audit gate (token + WCAG) before handoff.
 ---
@@ -38,6 +40,11 @@ TOR (PDF / DOCX / Notion / GDocs)
                     │  intelligence.json  │  10 dims → design_directives
                     └──────────┬──────────┘
                                │  validate_intelligence.py (+ cross-dim invariants)
+                               ▼  Step 2.6  Aesthetic Direction (138-brand library)
+                    ┌─────────────────────────────┐
+                    │  aesthetic.json             │  pick system/archetype → tokens
+                    │  + brand.config.json        │  ← validate_aesthetic.py (contrast from hex)
+                    └──────────┬──────────────────┘
                                ▼  Step 3  Flows (refine user_flows from directives)
                     ┌─────────────────────┐
                     │  flows.json         │  ← validate_flows.py
@@ -808,21 +815,19 @@ After generating, log:
 
 ## Step 4.6 — Critique (quality loop)
 
-> Read `references/critique-framework.md` first — runs after Step 4 builds the prototype, before handoff
+> Read `references/critique-framework.md` first (it points to `references/design-review.md` for the full rubric) — runs after Step 4 builds the prototype, before handoff
 > This is the "loop" that polishes the UI, instead of scaffold-and-done
 
-After generating the prototype, critique every main screen across **4 layers**:
+After generating the prototype, run a **scored review** of every main screen:
 
-1. **Visual Hierarchy** — clear focal point in the first 3 seconds? · enough contrast between H1/H2/body? · consistent spacing rhythm?
-2. **Information Architecture** — primary action clear with no competing CTA? · grouping by proximity? · labels include units?
-3. **Component Consistency** — button/icon/radius/color use one system? · hover/focus/loading/empty/error all present?
-4. **Context Fit** — density matches `design_directives.density_target`? · trust signals match `trust_emphasis`? · guidance matches `guidance_level`?
+1. Score the **6 weighted dimensions** (Visual Hierarchy 20 · Consistency 20 · Accessibility 20 · Usability 20 · Responsiveness 10 · Performance 10) → compute the overall (≤6 = rework before ship).
+2. Run **Nielsen's 10 heuristics**; flag each violation by number (H1…H10).
+3. Run the **anti-slop gate** (`aesthetics/taste/design-taste.md` Banned Defaults): pure `#000/#fff`, identical equal-weight cards, everything centered, rainbow accents, emoji-as-icons, colored left-border strips, em-dash/marketing-filler copy → each is a **Major** finding. The screen must earn `aesthetic.json`'s `mood_adjective`.
+4. The detailed 4-layer checklist (hierarchy / IA / consistency / context-fit, tied to `design_directives`) is in `critique-framework.md` — use it to find the specifics.
 
-Output (per screen or combined):
+Output (per screen or combined): the scored table + a prioritized findings table
+`# · Severity (Critical→Major→Minor→Enhancement) · Category · Location · Finding · Recommendation · Heuristic`, plus:
 ```markdown
-## Critique: [screen]
-### 🔴 Critical (fix before ship)  — [issue] → Fix: [action]
-### 🟡 High (should fix)           — [issue] → Fix: [action]
 ### ✅ What's Working              — [2-3 items]
 ### ⚡ Quick Wins (< 15 min)        — [high-impact fixes]
 ```
@@ -840,20 +845,27 @@ When done, log:
 
 ## Step 4.7 — Audit gate (before handoff/Figma)
 
-> Read `references/audit-checklist.md` first — this is a **gate** like `validate_brief.py`, but for the generated UI
-> Any 🔴 CRITICAL remaining → handoff/Figma is blocked until it's fixed
+> **Run the objective gate first — don't eyeball it:**
+> ```bash
+> python3 .claude/skills/tor-to-brief/scripts/audit_prototype.py \
+>   {OUTPUT_DIR}/prototype --a11y <AA|AAA from design_directives.a11y_target> \
+>   --report {OUTPUT_DIR}/prototype/docs/audit-report.md
+> ```
+> Exit 1 = **BLOCKED**. This recomputes WCAG contrast from globals.css (oklch → sRGB, light + dark)
+> and runs `lint_hardcodes.py` over the screens — categories A + B below are **machine-checked**, not
+> judged. Then read `references/audit-checklist.md` for the qualitative category C items.
 
 Audit the prototype across 3 categories (see the severity matrix in the reference):
 
 | Category | What to check | gate |
 |----------|---------------|------|
-| **A. Token Compliance** | No hardcoded hex/px that should be a semantic token · radius/shadow follow tokens | 🔴 = block |
-| **B. A11y / WCAG** | Contrast (to `design_directives.a11y_target`) · keyboard nav · focus ring · alt/aria-label · all labels present · 44px touch target | 🔴 = block |
-| **C. Component Quality** | Consistent naming · complete states (hover/focus/disabled/loading/error/empty) · no avoidable `any` | 🟡 = handoff note |
+| **A. Token Compliance** | `audit_prototype.py` → `lint_hardcodes.py`: no raw hex/px/ms or raw Tailwind palette (`bg-gray-500`) that should be a token | 🔴 = block (script) |
+| **B. A11y / WCAG** | `audit_prototype.py` recomputes contrast for the essential fg/bg pairs at `design_directives.a11y_target`, light + dark | 🔴 = block (script) |
+| **C. Component Quality** | Consistent naming · complete states (hover/focus/disabled/loading/error/empty) · no avoidable `any` | 🟡 = handoff note (agent) |
 
-> **a11y target** comes from `intelligence.json` → `design_directives.a11y_target` (Step 2.5 already enforced the floor + public-sector ⇒ AAA invariant).
+> **a11y target** comes from `intelligence.json` → `design_directives.a11y_target` (Step 2.5 already enforced the floor + public-sector ⇒ AAA invariant). Pass it straight to `--a11y` (the script maps `AA_plus`→AAA).
 
-Output `{OUTPUT_DIR}/prototype/docs/audit-report.md`:
+`audit_prototype.py` writes `{OUTPUT_DIR}/prototype/docs/audit-report.md` (gates A + B); append category C notes to it:
 ```
 DesignOps Audit Report — [project]
 A. Token Compliance:  [🔴/🟡/🟢] — X violations
@@ -869,6 +881,22 @@ log:
 ```
 
 If BLOCKED → loop back, fix per the report, and re-audit until it passes before moving to Step 5.
+
+---
+
+## Step 4.8 — Storybook QA layer (optional)
+
+> Opt-in. Off by default (Storybook + Playwright + Vitest are heavy; default prototype builds stay fast).
+> Template + exact enable steps: `references/storybook/README.md`. Lives in the **built prototype** (`output/prototype/`), never in the vendored `design-system/`.
+
+Adds a component explorer + **`@storybook/addon-a11y`** (axe-core on every rendered story — a runtime
+a11y pass that complements the static `audit_prototype.py` gate) + a light/dark toggle. Enable it when
+you want per-component state coverage or a CI a11y gate:
+```bash
+# inside output/prototype/ (already npm-installed) — see references/storybook/README.md
+npm run gen:stories && npm run test-storybook   # headless axe pass
+npm run storybook                                # interactive explorer at :6006
+```
 
 ---
 

@@ -59,9 +59,13 @@ Full spec: `.claude/skills/tor-to-brief/commands/generate-prototype.md`
 ### tor-to-brief
 Turns a TOR → design brief → first draft → POC prototype automatically, with a **quality loop**.
 
-**Pipeline:** Step 1+2 brief (facts) → **Step 2.5 Product Intelligence** (`intelligence.json` → `design_directives`) → **Step 3 Flows** (`flows.json`, refined from directives) → **Step 3.5 Screen Inventory** (`screen-inventory.json` + `design-first-draft.md`, flow→screen coverage) → Step 4 prototype → **Step 4.6 critique** → **Step 4.7 audit gate** → Step 5 Figma. Each stage has its own JSON artifact + validator gate.
+**Pipeline:** Step 1+2 brief (facts) → **Step 2.5 Product Intelligence** (`intelligence.json` → `design_directives`) → **Step 2.6 Aesthetic Direction** (`aesthetic.json` + `brand.config.json`, the visual/taste layer) → **Step 3 Flows** (`flows.json`, refined from directives) → **Step 3.5 Screen Inventory** (`screen-inventory.json` + `design-first-draft.md`, flow→screen coverage) → Step 4 prototype → **Step 4.6 critique** → **Step 4.7 audit gate** → Step 5 Figma. Each stage has its own JSON artifact + validator gate.
 
 **Product Intelligence Layer** (Step 2.5) infers 10 measurable dimensions (user types/expertise/goals/tasks, workflow complexity, data density, error tolerance, accessibility, compliance, decision criticality) → an open `design_directives` object. Replaces the old fixed industry presets; industry-agnostic. Spec: `references/intelligence-layer.md`; gate: `scripts/validate_intelligence.py`.
+
+**Aesthetic Direction Layer** (Step 2.6) commits a *visual* direction `design_directives` doesn't cover — picks one of **138 named design systems** (apple, linear-app, stripe, resend…) or an archetype from the vendored brand library, then resolves it into concrete, **contrast-checked** tokens. Output `aesthetic.json` + a ready-to-apply `brand.config.json`. Library + browser + anti-slop guide: `references/aesthetics/` (`scripts/design_systems.py list|search|show`); gate: `scripts/validate_aesthetic.py` (recomputes WCAG contrast from hex — never trusts the agent's self-reported ratio).
+
+**Audit gate** (Step 4.7) is a real runnable check, not agent judgment: `scripts/audit_prototype.py` runs `lint_hardcodes.py` over the screens (no raw hex/px/Tailwind-palette) and recomputes WCAG contrast from the prototype's `globals.css` (oklch→sRGB, light + dark) at `design_directives.a11y_target`. Exit 1 = BLOCKED. `references/audit-checklist.md` covers the qualitative category-C items.
 
 > Steps 4.6/4.7 + poc-patterns are pulled from the `designops-loop` skill and wired into the pipeline · references live in `.claude/skills/tor-to-brief/references/`
 
@@ -116,6 +120,8 @@ python3 .claude/skills/tor-to-brief/scripts/validate_brief.py ./output/brief.jso
 |------|----------|-----------------|
 | `brief.md` | Designer / PM review | 1+2 |
 | `brief.json` | AI agent (step 3 input) | 1+2 |
+| `aesthetic.json` | AI agent (visual direction + tokens) | 2.6 |
+| `brand.config.json` | `/generate-prototype` (theme override) | 2.6 |
 | `design-first-draft.md` | Designer iteration | 3 |
 
 ## Recommended project structure

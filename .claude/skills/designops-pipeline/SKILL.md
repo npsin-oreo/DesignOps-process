@@ -891,6 +891,25 @@ If BLOCKED → loop back, fix per the report, and re-audit until it passes befor
 
 ---
 
+## Step 4.7b — Runtime audit (optional)
+
+> Opt-in. Complements the static Step 4.7 by **rendering** the built page (Playwright headless Chrome)
+> and checking what source can't show. Template + enable steps: `references/runtime-audit/README.md`.
+> Degrades gracefully — without Playwright every gate prints SKIPPED and exits 0 (never blocks default).
+
+Runs on `out/index.html` (after `npm run build`): **axe-core** WCAG A/AA (button/link names, image alt,
+`lang`, `<title>`, ARIA, landmarks, heading order), **hover/focus-state contrast** (`verify_states`),
+modal **focus-trap** (`verify_focustrap`, when a trigger selector is given), plus a render-based
+**anti-slop** report (`taste_audit`, advisory). Blocking gates exit 1.
+```bash
+# inside output/prototype after build — see references/runtime-audit/README.md
+node scripts/runtime/audit_runtime.mjs out/index.html [--dark] [--open=<sel> --dialog=<sel>]
+```
+This is the layer that catches a nameless button / missing `alt` / no `lang` / a hover color that
+fails contrast — none of which the static gate can see.
+
+---
+
 ## Step 4.8 — Storybook QA layer (optional)
 
 > Opt-in. Off by default (Storybook + Playwright + Vitest are heavy; default prototype builds stay fast).

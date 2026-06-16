@@ -55,6 +55,7 @@ runs. It works for any kind of product — there are no fixed industry templates
          ▼  4.6   scored critique (6 dims + Nielsen + anti-slop) → auto-fix
          ▼  4.7   audit GATE — audit_prototype.py              docs/audit-report.md     🔴 exit 1 = blocked
          │          tokens · WCAG contrast (light+dark) · no-emoji
+         ▼  4.7b  runtime audit (optional) — axe · states · focus-trap · taste   (Playwright)
          ▼  4.8   Storybook QA (optional, opt-in)
          │
          ▼  5     Figma screens (separate, Figma MCP)
@@ -183,6 +184,15 @@ python3 .claude/skills/designops-pipeline/scripts/audit_prototype.py \
 > **Exit 1 = BLOCKED** — handoff/Figma is blocked until it passes. Categories are machine-checked,
 > not eyeballed. It audits the **generated surface only** (`components/ui` and any `docs/` dir are
 > auto-excluded), so just point it at the prototype — no `--scan` needed; add `--include-vendored` to audit everything.
+
+**Step 4.7b — Runtime audit (optional)** · [`runtime-audit/`](.claude/skills/designops-pipeline/references/runtime-audit/README.md)
+
+Renders the built page in headless Chrome (Playwright) to catch what source can't show — **axe-core**
+(button/link names, image alt, `lang`, ARIA, landmarks, heading order), **hover/focus-state contrast**,
+modal **focus-trap**, plus a render-based **anti-slop** report. Opt-in; skips cleanly without Playwright.
+```bash
+node scripts/runtime/audit_runtime.mjs out/index.html   # after npm run build, in the prototype
+```
 
 ---
 

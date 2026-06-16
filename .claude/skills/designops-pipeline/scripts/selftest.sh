@@ -228,6 +228,16 @@ cat > "$PROTO/app/globals.css" <<'CSS'
 }
 CSS
 python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA >/dev/null 2>&1 && bad "low contrast should block" || ok "foreground≈background → exit 1 (BLOCKED)"
+# Step 4.7b runtime audit — scripts present; orchestrator degrades gracefully (no Playwright → exit 0)
+RT="$SCRIPTS_DIR/../references/runtime-audit/scripts"
+[ -f "$RT/audit_runtime.mjs" ] && [ -f "$RT/axe_audit.mjs" ] && [ -f "$RT/verify_states.mjs" ] && ok "runtime-audit scripts vendored" || bad "runtime-audit scripts missing"
+if command -v node >/dev/null 2>&1; then
+  for s in audit_runtime axe_audit verify_states verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
+  echo '<!doctype html><html lang="en"><head><title>x</title></head><body><button>Go</button></body></html>' > "$TMP/rt.html"
+  node "$RT/audit_runtime.mjs" "$TMP/rt.html" >/dev/null 2>&1 && ok "runtime audit skips cleanly w/o Playwright → exit 0" || bad "runtime audit should skip (exit 0) without Playwright"
+else
+  ok "node absent — runtime-audit syntax/skip checks N/A"
+fi
 
 # ── T11. Folded skills — DTCG token foundation gates (brandkit) ───────────────
 echo "[T11] brandkit/DTCG gates + folded-skill assets present"

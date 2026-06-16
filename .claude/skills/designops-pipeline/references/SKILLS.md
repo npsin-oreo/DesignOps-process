@@ -36,3 +36,7 @@ TOR ──► brief ──► intelligence(2.5) ──► aesthetic(2.6) ──�
 - **`mobile-usability.md`** — mobile UI/UX checklist (touch targets, thumb reach, input types, 320px
   reflow, no hover-only). Wired into Step 3.5 screen generation and the Responsiveness dimension of
   the Step 4.6 critique. Most TORs here are mobile-first, so this applies by default.
+- **`runtime-audit/`** — Step 4.7b optional runtime gate (vendored from `ux-ui-agent-skills`). Renders
+  the built page in Playwright and runs axe-core, hover/focus-state contrast, modal focus-trap, and a
+  render-based anti-slop report — the things the static `audit_prototype.py` can't see. Skips cleanly
+  without Playwright.

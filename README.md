@@ -2,24 +2,37 @@
 
 # 🎨 DesignOps Pipeline — TOR → Prototype
 
-**Drop in a TOR → get a brief, a product-intelligence read, a committed visual direction,
-user flows, a screen inventory, and a POC prototype that has already passed a scored critique
-and a script-enforced audit.**
+**Drop in a project brief → get a clear written spec and a working demo app —
+with accessibility and design quality checked automatically along the way.**
 
 Powered by Claude Code · Next.js 16 · shadcn/ui · Tailwind v4
 
-`Standalone` · `Offline-ready` · `WCAG-gated` · `138-brand aesthetic library` · `41/41 selftest`
+`Standalone` · `Offline-ready` · `WCAG-gated` · `138-brand aesthetic library` · `44/44 selftest`
 
 </div>
 
 ---
 
-## Overview
+## In plain words
 
-This repo turns a **TOR** (Terms of Reference) — or any project brief — into a **structured
-requirement + a working prototype**, automatically. Every stage emits a JSON artifact behind its
-own validator gate, so the chain is contract-driven end to end. It is **industry-agnostic**: no
-fixed presets — the product is read as a vector of measurable dimensions.
+You hand it a **project brief** (a TOR — the document that says what to build). It reads the brief,
+figures out who the users are and what matters to them, picks a look and feel, plans the screens, and
+**builds a clickable demo app** — then checks its own work for accessibility and quality before
+handing it off.
+
+> **Goes in:** a brief (PDF / Word / Notion / Google Docs).
+> **Comes out:** a clear written spec **+** a working demo you can open in a browser.
+
+Think of it as an assembly line for the early design of an app: each station does one job and won't
+pass the work on until it's correct. Good for designers, PMs, and engineers who want to go from
+"here's the scope" to "here's something to react to" fast.
+
+---
+
+## How it works (the pipeline)
+
+Every stage produces a file and passes through a **gate** (an automatic check) before the next stage
+runs. It works for any kind of product — there are no fixed industry templates.
 
 ```
   TOR (PDF / DOCX / Notion / GDocs)
@@ -76,6 +89,10 @@ bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh --tor docs/tor.pd
 # 4. Run it
 cd output/prototype && npm install && npm run dev   # → http://localhost:3000
 ```
+
+> 📱 **Test on a phone:** the dev server prints a `Network: http://<lan-ip>:3000` URL — open it on a
+> phone on the same Wi-Fi. The scaffolded `next.config.ts` auto-allows your LAN IPs, so the page
+> hydrates and works (Next blocks cross-origin dev HMR otherwise). Most TORs here are mobile-first.
 
 > 💡 No TOR handy? Use the bundled sample (Thai HIS TOR — also proves non-English reading):
 > `--tor .claude/skills/designops-pipeline/references/sample-tor.md`
@@ -147,6 +164,7 @@ Output `aesthetic.json` + a ready-to-apply `output/brand.config.json` for `/gene
 
 - Score **6 weighted dimensions** (Hierarchy 20 · Consistency 20 · Accessibility 20 · Usability 20 · Responsiveness 10 · Performance 10) → weighted overall (≤6 = rework).
 - Flag **Nielsen's 10 heuristics** by number · run the **anti-slop gate** (Banned Defaults: pure #000/#fff, identical cards, rainbow accents, emoji-as-icons, em-dash copy…).
+- **Mobile lens** ([`mobile-usability.md`](.claude/skills/designops-pipeline/references/mobile-usability.md)) for mobile-first products — touch targets ≥44px, thumb reach, correct input types, 320px reflow, no hover-only. Also applied when screens are generated (Step 3.5).
 - Auto-fix every 🔴 Critical + ⚡ Quick Win; log the rest for Dev.
 
 **Step 4.7 — Audit gate (a real script)** · `audit_prototype.py`
@@ -221,7 +239,7 @@ Designops-project-test/
 │   │   ├── validate_{brief,intelligence,flows,screens,aesthetic}.py
 │   │   ├── audit_prototype.py            #    Step 4.7 gate (token · WCAG · emoji)
 │   │   ├── lint_hardcodes.py
-│   │   └── selftest.sh                   #    41/41 regression guard
+│   │   └── selftest.sh                   #    44/44 regression guard
 │   └── references/
 │       ├── aesthetics/                   #    🎨 138-brand library + taste + contrast.py
 │       ├── tokens/                       #    DTCG token foundation + validators (brandkit)
@@ -230,7 +248,7 @@ Designops-project-test/
 │       ├── design-review.md · critique-framework.md · audit-checklist.md
 │       ├── intelligence-layer.md · poc-patterns.md · shadcn-prototype.md
 │       ├── image-to-code.md · brandkit.md · migrate-design-system.md
-│       ├── performance.md · governance.md · SKILLS.md
+│       ├── performance.md · governance.md · mobile-usability.md · SKILLS.md
 │       └── sample-tor.md
 ├── design-system/                        # 🎨 vendored DS (shadcn, 52 components, ~2MB)
 ├── docs/tor.pdf                          # 📄 drop your TOR here
@@ -269,7 +287,7 @@ Designops-project-test/
 ## 🧪 Tests
 
 ```bash
-bash .claude/skills/designops-pipeline/scripts/selftest.sh        # 41/41, runs on macOS stock bash 3.2
+bash .claude/skills/designops-pipeline/scripts/selftest.sh        # 44/44, runs on macOS stock bash 3.2
 ```
 
 Covers bash-3.2 compatibility, every validator (valid passes / invalid fails), the aesthetic +

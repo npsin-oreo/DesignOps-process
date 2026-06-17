@@ -200,6 +200,55 @@ else
   log "brief.json doesn't exist yet — Claude Code will create it after steps 1+2"
 fi
 
+# ── step 2.3: brief → user research (UX) ──────────────────────────────────────
+# Personas / JTBD / pain points as structured EVIDENCE for the intelligence layer.
+# Hybrid: pure inference unless real research inputs are provided (honesty-gated).
+RESEARCH_JSON="$OUT_DIR/research.json"
+if [[ ! -f "$RESEARCH_JSON" ]]; then
+  step "Step 2.3 — User Research Layer (brief → research.json)"
+  PROMPT_RESEARCH="$OUT_DIR/.prompt_research.txt"
+  cat > "$PROMPT_RESEARCH" << PROMPT
+Read "$BRIEF_JSON" (and any provided research inputs) and produce "$RESEARCH_JSON"
+following $SKILL_DIR/references/user-research-layer.md (the User Research Layer).
+
+Declare meta.evidence_mode + meta.inputs_provided FIRST. With no real inputs, every item is
+source:"inferred" (a hypothesis, confidence <= medium) — never fabricate evidence. Produce
+personas, jobs_to_be_done, pain_points, behavioral_assumptions (+ a research_question for every
+high-risk one), and feeds_intelligence so Step 2.5 can consume them.
+PROMPT
+  _generate "$PROMPT_RESEARCH" "Step 2.3 — brief → user research" "$RESEARCH_JSON"
+fi
+if [[ -f "$RESEARCH_JSON" ]]; then
+  step "Validating research.json"
+  python3 "$SKILL_DIR/scripts/validate_research.py" "$RESEARCH_JSON" "$BRIEF_JSON" || {
+    err "research.json validation failed — fix it first, or re-run Step 2.3"
+  }
+  log "✓ research.json valid"
+fi
+
+# ── step 2.4: brief + research → competitive analysis (UX) ────────────────────
+COMPETITIVE_JSON="$OUT_DIR/competitive.json"
+if [[ ! -f "$COMPETITIVE_JSON" ]]; then
+  step "Step 2.4 — Competitive Analysis Layer (brief + research → competitive.json)"
+  PROMPT_COMP="$OUT_DIR/.prompt_competitive.txt"
+  cat > "$PROMPT_COMP" << PROMPT
+Read "$BRIEF_JSON" and "$RESEARCH_JSON" (and any provided competitor URLs/teardowns) and produce
+"$COMPETITIVE_JSON" following $SKILL_DIR/references/competitive-analysis-layer.md.
+
+Declare meta.evidence_mode + meta.inputs_provided FIRST. With no real competitor inputs, every
+item is source:"inferred" (market hypotheses, not a verified teardown). Mark conventions
+"follow" unless you justify "break" with a reason; name the table_stakes. Fill feeds for Step 2.5/2.6.
+PROMPT
+  _generate "$PROMPT_COMP" "Step 2.4 — brief + research → competitive analysis" "$COMPETITIVE_JSON"
+fi
+if [[ -f "$COMPETITIVE_JSON" ]]; then
+  step "Validating competitive.json"
+  python3 "$SKILL_DIR/scripts/validate_competitive.py" "$COMPETITIVE_JSON" "$BRIEF_JSON" || {
+    err "competitive.json validation failed — fix it first, or re-run Step 2.4"
+  }
+  log "✓ competitive.json valid"
+fi
+
 # ── step 2.5: brief → product intelligence ────────────────────────────────────
 # Stage the prompt unconditionally (like step 1+2 / step 3) so it appears in the
 # AGENT ACTIONS checklist even before brief.json exists — the agent produces brief
@@ -219,6 +268,11 @@ roll them up into design_directives. Obey the cross-dimension invariants in the 
 
 Fact vs interpretation: brief.json = stated facts, intelligence.json = inference.
 Never restate the brief — infer what it implies. No evidence → confidence:"low" + an open_question.
+
+If "$RESEARCH_JSON" exists, use feeds_intelligence as evidence: personas → user_types,
+jobs_to_be_done → user_goals, pain_points/behavioral_assumptions → error_tolerance/open_questions
+(evidence-backed research raises confidence; inferred research stays a hypothesis). If
+"$COMPETITIVE_JSON" exists, use its feeds for data_density + expected patterns.
 PROMPT
   _generate "$PROMPT_INTEL" "Step 2.5 — brief → product intelligence" "$INTEL_JSON"
 fi

@@ -16,6 +16,11 @@ description: >
   Step 4 builds a POC prototype from a ready-made component library + mock data, Step 4.6 runs a
   scored critique (6 weighted dimensions + Nielsen + anti-slop), Step 4.7 is a runnable audit gate
   (audit_prototype.py: tokens + WCAG contrast in light/dark + no-emoji) before handoff.
+  UX layers feed the pipeline: Step 2.3 (User Research → research.json: personas/JTBD/pains) and
+  Step 2.4 (Competitive Analysis → competitive.json) supply evidence to Step 2.5; Step 4.8
+  (Usability Test → usability.json: heuristic + automated + simulated persona walkthrough) runs on
+  the built prototype. All three are HYBRID (infer-then-override) and honesty-gated — nothing is
+  marked evidence without a declared input, and usability never claims a real-user test.
 ---
 
 # designops-pipeline
@@ -36,7 +41,12 @@ TOR (PDF / DOCX / Notion / GDocs)
   │  (humans)   │     │  (AI consumes)   │
   └─────────────┘     └────────┬─────────┘
                                │  validate_brief.py
-                               ▼  Step 2.5  Product Intelligence Layer
+                               ▼  Step 2.3 User Research · Step 2.4 Competitive (UX, hybrid)
+                    ┌─────────────────────────────┐
+                    │  research.json              │  personas / JTBD / pains
+                    │  competitive.json           │  ← validate_research.py / validate_competitive.py
+                    └──────────┬──────────────────┘     (honesty-gated: no fabricated evidence)
+                               ▼  Step 2.5  Product Intelligence Layer (consumes UX evidence)
                     ┌─────────────────────┐
                     │  intelligence.json  │  10 dims → design_directives
                     └──────────┬──────────┘

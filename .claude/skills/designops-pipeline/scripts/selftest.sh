@@ -31,7 +31,7 @@ for s in "$RUN" "$SCRIPTS_DIR/setup-prototype.sh" "$0"; do
   [ -f "$s" ] || continue
   /bin/bash -n "$s" 2>/dev/null && ok "syntax: $(basename "$s")" || bad "syntax: $(basename "$s")"
 done
-for p in "$VALIDATE" "$VALIDATE_INTEL" "$SCRIPTS_DIR/validate_flows.py" "$SCRIPTS_DIR/validate_screens.py" "$SCRIPTS_DIR/validate_aesthetic.py" "$SCRIPTS_DIR/audit_prototype.py" "$SCRIPTS_DIR/lint_hardcodes.py" "$SCRIPTS_DIR/../references/ux-writing/scripts/check_no_emoji.py"; do
+for p in "$VALIDATE" "$VALIDATE_INTEL" "$SCRIPTS_DIR/validate_flows.py" "$SCRIPTS_DIR/validate_screens.py" "$SCRIPTS_DIR/validate_aesthetic.py" "$SCRIPTS_DIR/validate_research.py" "$SCRIPTS_DIR/validate_competitive.py" "$SCRIPTS_DIR/validate_usability.py" "$SCRIPTS_DIR/audit_prototype.py" "$SCRIPTS_DIR/lint_hardcodes.py" "$SCRIPTS_DIR/../references/ux-writing/scripts/check_no_emoji.py"; do
   python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$p" 2>/dev/null && ok "parses: $(basename "$p")" || bad "parses: $(basename "$p")"
 done
 # bash-4-only constructs that silently break on 3.2
@@ -252,6 +252,42 @@ if [ -f "$REFS/tokens/scripts/validate_tokens.py" ]; then
 else
   bad "DTCG token kit not vendored"
 fi
+
+# ── T12. UX layers — User Research / Competitive / Usability honesty gates ────
+echo "[T12] UX layers (2.3 research · 2.4 competitive · 4.8 usability)"
+[ -f "$REFS/user-research-layer.md" ] && [ -f "$REFS/competitive-analysis-layer.md" ] && [ -f "$REFS/usability-test-layer.md" ] && ok "UX layer references present" || bad "UX layer references missing"
+
+# research — valid (inferred mode) passes; fabricated evidence fails
+cat > "$TMP/research.json" <<'JSON'
+{ "meta": { "schema_version": "1.0", "evidence_mode": "inferred", "inputs_provided": [], "overall_confidence": "medium" },
+  "personas": [{ "id": "P01", "name": "Op", "primary": true, "tech_proficiency": "intermediate", "goals_ref": ["JTBD01"], "source": "inferred", "evidence": [], "confidence": "medium" }],
+  "jobs_to_be_done": [{ "id": "JTBD01", "persona_ref": "P01", "when": "a", "want": "b", "so_that": "c", "priority": "must", "source": "inferred", "evidence": [], "confidence": "medium" }],
+  "pain_points": [], "behavioral_assumptions": [], "research_questions": [], "feeds_intelligence": {} }
+JSON
+python3 "$SCRIPTS_DIR/validate_research.py" "$TMP/research.json" >/dev/null 2>&1 && ok "valid research (inferred) → exit 0" || bad "valid research should pass"
+python3 -c "import json;d=json.load(open('$TMP/research.json'));d['personas'][0]['source']='evidence';d['personas'][0]['evidence']=['x:ghost'];json.dump(d,open('$TMP/research_bad.json','w'))"
+python3 "$SCRIPTS_DIR/validate_research.py" "$TMP/research_bad.json" >/dev/null 2>&1 && bad "fabricated evidence should fail" || ok "evidence not in inputs_provided → exit 1 (BLOCKED)"
+
+# competitive — valid passes; convention 'break' without reason fails
+cat > "$TMP/competitive.json" <<'JSON'
+{ "meta": { "schema_version": "1.0", "evidence_mode": "inferred", "inputs_provided": [], "overall_confidence": "medium" },
+  "competitors": [{ "id": "CMP01", "name": "Rival", "type": "direct", "source": "inferred", "evidence": [], "confidence": "medium" }],
+  "feature_benchmark": [], "ux_pattern_conventions": [{ "id": "PC01", "pattern": "left-nav", "convention": "follow", "source": "inferred", "evidence": [], "confidence": "low" }],
+  "differentiation": [], "table_stakes": [], "feeds": {} }
+JSON
+python3 "$SCRIPTS_DIR/validate_competitive.py" "$TMP/competitive.json" >/dev/null 2>&1 && ok "valid competitive (inferred) → exit 0" || bad "valid competitive should pass"
+python3 -c "import json;d=json.load(open('$TMP/competitive.json'));d['ux_pattern_conventions'][0]['convention']='break';json.dump(d,open('$TMP/competitive_bad.json','w'))"
+python3 "$SCRIPTS_DIR/validate_competitive.py" "$TMP/competitive_bad.json" >/dev/null 2>&1 && bad "break w/o reason should fail" || ok "convention break needs reason → exit 1 (BLOCKED)"
+
+# usability — valid passes; claiming a real test fails
+cat > "$TMP/usability.json" <<'JSON'
+{ "meta": { "schema_version": "1.0", "not_real_user_testing": true, "methods_used": ["heuristic"], "overall_confidence": "medium", "human_validation_required": true },
+  "heuristic_findings": [{ "id": "H01", "heuristic": "Status", "screen": "x", "severity": 1, "issue": "i", "recommendation": "r", "method": "heuristic", "evidence": "", "confidence": "medium" }],
+  "persona_walkthroughs": [], "severity_summary": {}, "top_issues": [], "limitations": ["no real participants"] }
+JSON
+python3 "$SCRIPTS_DIR/validate_usability.py" "$TMP/usability.json" >/dev/null 2>&1 && ok "valid usability (simulated) → exit 0" || bad "valid usability should pass"
+python3 -c "import json;d=json.load(open('$TMP/usability.json'));d['meta']['not_real_user_testing']=False;json.dump(d,open('$TMP/usability_bad.json','w'))"
+python3 "$SCRIPTS_DIR/validate_usability.py" "$TMP/usability_bad.json" >/dev/null 2>&1 && bad "fake real test should fail" || ok "not_real_user_testing must be true → exit 1 (BLOCKED)"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

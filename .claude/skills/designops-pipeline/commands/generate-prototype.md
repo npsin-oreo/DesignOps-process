@@ -366,6 +366,27 @@ Run through every generated file and verify:
 - The script writes `output/prototype/docs/audit-report.md`
 - If **BLOCKED** (exit 1) → loop back, fix, re-run until exit 0, then write the handoff doc
 
+## Step 5.7 — Usability Test Layer (simulated — Step 4.8)
+
+> Read `../references/usability-test-layer.md`. A **simulated** usability evaluation — no real
+> participants — from three methods: heuristic (Nielsen's 10), automated (restate the Step 5.6
+> audit + 4.7b runtime signals as findings with evidence), and AI persona walkthroughs that use
+> the personas from `output/research.json`.
+
+1. **Heuristic pass** — evaluate each main screen against Nielsen's 10; rate severity 0–4.
+2. **Restate automated signals** — pull axe / contrast / focus-trap findings from Step 5.6 (and 4.7b if run) as `method:"automated"` with `evidence`.
+3. **Persona walkthroughs** — walk each primary persona's must-do task through the built flow; flag friction per step (`simulated:true`).
+4. Write `output/usability.json`; every severity≥3 needs a `recommendation` and a `top_issues` entry; list `limitations` frankly.
+
+> **Gate (integrity, not the findings themselves):**
+> ```bash
+> python3 .claude/skills/designops-pipeline/scripts/validate_usability.py \
+>   output/usability.json output/research.json
+> ```
+> Exit 1 = the report claimed a real test (`not_real_user_testing` must be true), used a non-simulated
+> method, hid a severe issue from `top_issues`, or omitted `limitations`. Fix and re-run. The findings
+> are advisory — feed the top issues into the handoff doc's Quality section below.
+
 ## Step 6 — Generate handoff doc
 
 Write `output/prototype/docs/poc-handoff.md`:
@@ -391,9 +412,10 @@ cd output/prototype && npm install && npm run dev
 |-----------|--------|----------------------|--------|
 [rows from the Gap Report in design-first-draft.md]
 
-## Quality (critique + audit)
+## Quality (critique + audit + usability)
 - Critique: `docs/critique.md` — 🟡 High items Dev should review: [list]
 - Audit: `docs/audit-report.md` — Token [🟢/🟡] · A11y [AA|AAA] [🟢/🟡] · Component [🟢/🟡]
+- Usability (simulated): `usability.json` — top issues: [top_issues w/ severity + fix_priority]. NOT a real-user test — validate with users.
 
 ## Brand tokens applied
 [show only the keys overridden from brand.config.json]

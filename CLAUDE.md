@@ -59,7 +59,9 @@ Full spec: `.claude/skills/designops-pipeline/commands/generate-prototype.md`
 ### designops-pipeline
 Turns a TOR → design brief → first draft → POC prototype automatically, with a **quality loop**.
 
-**Pipeline:** Step 1+2 brief (facts) → **Step 2.5 Product Intelligence** (`intelligence.json` → `design_directives`) → **Step 2.6 Aesthetic Direction** (`aesthetic.json` + `brand.config.json`, the visual/taste layer) → **Step 3 Flows** (`flows.json`, refined from directives) → **Step 3.5 Screen Inventory** (`screen-inventory.json` + `design-first-draft.md`, flow→screen coverage) → Step 4 prototype → **Step 4.6 critique** → **Step 4.7 audit gate** → Step 5 Figma. Each stage has its own JSON artifact + validator gate.
+**Pipeline:** Step 1+2 brief (facts) → **Step 2.3 User Research** (`research.json`) + **Step 2.4 Competitive Analysis** (`competitive.json`) → **Step 2.5 Product Intelligence** (`intelligence.json` → `design_directives`, consumes the UX evidence) → **Step 2.6 Aesthetic Direction** (`aesthetic.json` + `brand.config.json`, the visual/taste layer) → **Step 3 Flows** (`flows.json`, refined from directives) → **Step 3.5 Screen Inventory** (`screen-inventory.json` + `design-first-draft.md`, flow→screen coverage) → Step 4 prototype → **Step 4.6 critique** → **Step 4.7 audit gate** → **Step 4.8 Usability Test** (`usability.json`) → Step 5 Figma. Each stage has its own JSON artifact + validator gate.
+
+**UX layers (2.3 / 2.4 / 4.8)** are **hybrid + honesty-gated.** Each declares `meta.evidence_mode` (`inferred` | `hybrid` | `evidence_backed`) + `inputs_provided`. With no real inputs everything is `source:"inferred"` (a hypothesis, confidence ≤ medium) — the validators (`validate_research.py`, `validate_competitive.py`, `validate_usability.py`) reject any item marked `evidence` whose ref isn't in `inputs_provided` (no fabricated research), and usability must set `not_real_user_testing:true` with simulated walkthroughs only. Specs: `references/{user-research,competitive-analysis,usability-test}-layer.md`.
 
 **Product Intelligence Layer** (Step 2.5) infers 10 measurable dimensions (user types/expertise/goals/tasks, workflow complexity, data density, error tolerance, accessibility, compliance, decision criticality) → an open `design_directives` object. Replaces the old fixed industry presets; industry-agnostic. Spec: `references/intelligence-layer.md`; gate: `scripts/validate_intelligence.py`.
 
@@ -122,9 +124,12 @@ python3 .claude/skills/designops-pipeline/scripts/validate_brief.py ./output/bri
 |------|----------|-----------------|
 | `brief.md` | Designer / PM review | 1+2 |
 | `brief.json` | AI agent (step 3 input) | 1+2 |
+| `research.json` | AI agent (personas/JTBD → intelligence evidence) | 2.3 |
+| `competitive.json` | AI agent (benchmark/patterns → intelligence + aesthetic) | 2.4 |
 | `aesthetic.json` | AI agent (visual direction + tokens) | 2.6 |
 | `brand.config.json` | `/generate-prototype` (theme override) | 2.6 |
 | `design-first-draft.md` | Designer iteration | 3 |
+| `usability.json` | Dev / designer (simulated usability findings) | 4.8 |
 
 ## Recommended project structure
 

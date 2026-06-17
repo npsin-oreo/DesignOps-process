@@ -75,7 +75,9 @@ consume — so UI decisions come from *what the product needs*, not from a featu
   "design_directives": { "density_target": 3, "guidance_level": "guided|balanced|expert",
     "safeguard_level": "minimal|standard|strict|maximal", "a11y_target": "AA|AA_plus|AAA",
     "mandatory_flows": [], "navigation_model": "single|wizard|hub_spoke|workspace",
-    "trust_emphasis": "low|medium|high" },
+    "trust_emphasis": "low|medium|high",
+    "rationale": "<short why: how these directives follow from the dimensions + research/competitive evidence>",
+    "trade_offs": [{ "decision": "", "chose": "", "over": "", "because": "" }] },
 
   "open_questions": [{ "dimension": "compliance", "question": "", "impact": "blocker|important|nice_to_know" }]
 }
@@ -122,6 +124,9 @@ Rules:
 4. GOALS ARE OUTCOMES — no UI nouns (button/screen/page).
 5. RESPECT THE INVARIANTS above (the validator rejects violations).
 6. Synthesize design_directives by combining dimensions — these drive the next stage, make them decisive.
+   Write `rationale` (a short why, grounded in the dimensions + any research/competitive evidence) and at
+   least the central `trade_offs` entry (decision / chose / over / because) so the strategy is auditable,
+   not just emitted — this is what makes the pipeline a reasoning system, not a generator.
 
 Process: user_types (+inferred roles) → expertise → goals → tasks → workflow_complexity + data_density →
 error_tolerance + decision_criticality (together) → accessibility + compliance → design_directives rollup →

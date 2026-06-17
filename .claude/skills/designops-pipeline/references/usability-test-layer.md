@@ -16,6 +16,7 @@ for empirical data.
 3. **Automated findings cite their signal.** `method:"automated"` requires `evidence` (the axe rule id, selector, or contrast pair) — no unsourced "machine said so".
 
 > Validated by `scripts/validate_usability.py`. Advisory by default; the gate **fails** only on integrity violations (a fake "real test", an un-actionable severe finding), not on the findings themselves.
+> Worked example (with persona_ref resolving into research.json): `examples/usability.example.json` + `examples/README.md`.
 
 ---
 

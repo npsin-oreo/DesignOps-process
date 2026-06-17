@@ -222,6 +222,24 @@ def validate(intel_path, brief_path=None):
     _enum(dz.get("navigation_model"), NAV_MODEL, "design_directives.navigation_model", errors)
     _enum(dz.get("trust_emphasis"), TRUST, "design_directives.trust_emphasis", errors)
 
+    # reasoning trace — makes the strategy auditable ("Reasoning System", not generator).
+    # rationale = why these directives follow from the dimensions; trade_offs = decisions made.
+    if not isinstance(dz.get("rationale"), str) or not dz.get("rationale", "").strip():
+        errors.append("design_directives.rationale required — a short why, grounded in the dimensions")
+    tos = dz.get("trade_offs", [])
+    if not isinstance(tos, list):
+        errors.append("design_directives.trade_offs must be a list")
+    else:
+        for i, t in enumerate(tos):
+            if not isinstance(t, dict):
+                errors.append(f"design_directives.trade_offs[{i}] must be an object")
+                continue
+            for k in ("decision", "chose", "over", "because"):
+                if not t.get(k):
+                    errors.append(f"design_directives.trade_offs[{i}].{k} required (decision/chose/over/because)")
+        if not tos:
+            warnings.append("design_directives.trade_offs is empty — state at least the central trade-off so the strategy is auditable")
+
     # ── C. cross-dimension invariants (hard fails) ──────────────────────────────
     # rollup must agree with its source dimension
     if dz.get("a11y_target") != an.get("wcag_target"):

@@ -17,6 +17,7 @@ of three modes, declared in `meta.evidence_mode`:
 3. **Outcomes, not features.** JTBD are situations + motivations ("when I…, I want…, so that…"), never UI.
 
 > Validated by `scripts/validate_research.py` — schema + ref resolution + the **honesty invariants** below. Feeds `intelligence.json` via `feeds_intelligence`.
+> Worked example + how to upgrade inferred→hybrid by providing real inputs: `examples/research.example.json` + `examples/README.md`.
 
 ---
 

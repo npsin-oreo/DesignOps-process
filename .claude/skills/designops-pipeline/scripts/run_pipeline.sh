@@ -264,7 +264,9 @@ $SKILL_DIR/references/intelligence-layer.md (the Product Intelligence Layer).
 Infer 10 measurable product dimensions — User Types, User Expertise, User Goals,
 Core Tasks, Workflow Complexity, Data Density, Error Tolerance, Accessibility Needs,
 Compliance Requirements, Decision Criticality — each with evidence + confidence, then
-roll them up into design_directives. Obey the cross-dimension invariants in the reference.
+roll them up into design_directives — including design_directives.rationale (a short why, grounded in
+the dimensions + research/competitive evidence) and at least the central trade_offs entry
+(decision/chose/over/because) so the strategy is auditable. Obey the cross-dimension invariants in the reference.
 
 Fact vs interpretation: brief.json = stated facts, intelligence.json = inference.
 Never restate the brief — infer what it implies. No evidence → confidence:"low" + an open_question.
@@ -317,6 +319,9 @@ Process (anti-slop — deciding BEFORE generating; see $AESTHETICS_DIR/taste/des
 2. Pick a direction that fits the product intelligence — a named_system from the library
    (read its DESIGN.md) or an archetype from taste/aesthetic-systems.md. Justify the fit
    against intelligence dimensions (trust_emphasis, user_expertise, data_density, domain).
+   If "$COMPETITIVE_JSON" exists, use feeds.aesthetic_hint + differentiation to position the look
+   relative to competitors (match category conventions, differentiate on the chosen axis — not random
+   contrast). If "$RESEARCH_JSON" exists, let the primary persona context/tone steer mood_adjective.
    If the TOR/brief provides reference images, screenshots, or a mockup, INFER the direction
    from them instead (palette/type/spacing/radius/layout) per $SKILL_DIR/references/image-to-code.md,
    then anchor to the closest named_system/archetype. Match the design system, never copy assets.

@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "source_prototype": "output/prototype",
+    "generated_at": "2026-06-17T00:00:00Z",
+    "schema_version": "1.0",
+    "not_real_user_testing": true,
+    "methods_used": ["heuristic", "automated", "persona_walkthrough"],
+    "research_ref": "output/research.json",
+    "overall_confidence": "medium",
+    "human_validation_required": true
+  },
+  "heuristic_findings": [
+    {
+      "id": "H01", "heuristic": "Visibility of system status", "screen": "check-in/search", "severity": 3,
+      "issue": "no loading state while the reservation search runs", "recommendation": "add a skeleton row + inline spinner",
+      "method": "heuristic", "evidence": "", "confidence": "medium"
+    },
+    {
+      "id": "H02", "heuristic": "Accessibility (contrast)", "screen": "check-in/search", "severity": 2,
+      "issue": "hint text measured 4.3:1 against the card background", "recommendation": "darken hint token to clear AA (>=4.5:1)",
+      "method": "automated", "evidence": "axe-core: color-contrast (.search-hint)", "confidence": "high"
+    }
+  ],
+  "persona_walkthroughs": [
+    {
+      "persona_ref": "P01", "task": "find a reservation by guest name", "simulated": true, "completed": true,
+      "friction_points": [
+        { "step": "open search", "problem": "search field defaults to reference, not name", "severity": 3 },
+        { "step": "submit", "problem": "no feedback until results render", "severity": 2 }
+      ]
+    }
+  ],
+  "severity_summary": { "0": 0, "1": 0, "2": 2, "3": 2, "4": 0 },
+  "top_issues": [
+    { "ref": "H01", "severity": 3, "fix_priority": "now" }
+  ],
+  "limitations": [
+    "no real participants — findings are expert-heuristic + automated + simulated persona walkthroughs",
+    "severity is evaluator-assigned, not observed task-failure rates; validate with 5+ real operators"
+  ]
+}

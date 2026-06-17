@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "source_brief": "output/brief.json",
+    "generated_at": "2026-06-17T00:00:00Z",
+    "schema_version": "1.0",
+    "evidence_mode": "hybrid",
+    "inputs_provided": ["interview:ops-notes-2026-06.md", "analytics:ga4-checkin-funnel"],
+    "overall_confidence": "medium",
+    "human_reviewed": false
+  },
+  "personas": [
+    {
+      "id": "P01", "name": "Front-desk operator", "archetype": "task-focused operator", "primary": true,
+      "context": "high-volume check-in desk, interrupted often", "tech_proficiency": "intermediate",
+      "environment": "shared kiosk, standing", "goals_ref": ["JTBD01"], "frustrations": ["search needs exact ref"],
+      "source": "evidence", "evidence": ["interview:ops-notes-2026-06.md"], "confidence": "high"
+    },
+    {
+      "id": "P02", "name": "Duty manager", "archetype": "oversight/approver", "primary": false,
+      "context": "handles exceptions + overrides", "tech_proficiency": "intermediate",
+      "environment": "back office", "goals_ref": ["JTBD02"], "frustrations": ["no audit trail of overrides"],
+      "source": "inferred", "evidence": [], "confidence": "medium"
+    }
+  ],
+  "jobs_to_be_done": [
+    {
+      "id": "JTBD01", "persona_ref": "P01", "when": "a guest arrives without a booking reference",
+      "want": "to find their reservation by name fast", "so_that": "the queue keeps moving",
+      "priority": "must", "source": "evidence", "evidence": ["analytics:ga4-checkin-funnel"], "confidence": "high"
+    },
+    {
+      "id": "JTBD02", "persona_ref": "P02", "when": "an operator hits a blocked action",
+      "want": "to approve the override with a reason", "so_that": "the desk isn't stuck and it's accountable",
+      "priority": "should", "source": "inferred", "evidence": [], "confidence": "medium"
+    }
+  ],
+  "pain_points": [
+    {
+      "id": "PP01", "persona_ref": "P01", "statement": "exact-ref-only search forces guests to dig for emails",
+      "severity": "high", "frequency": "frequent",
+      "source": "evidence", "evidence": ["interview:ops-notes-2026-06.md"], "confidence": "high"
+    }
+  ],
+  "behavioral_assumptions": [
+    {
+      "id": "A01", "statement": "operators reach for name search before reference search",
+      "risk_if_wrong": "high", "validation_method": "usability_test", "status": "unvalidated",
+      "source": "inferred", "evidence": [], "confidence": "medium"
+    }
+  ],
+  "research_questions": [
+    {
+      "id": "RQ01", "question": "On arrival, do operators search by name or reference first?",
+      "tied_to": "A01", "method": "usability_test", "priority": "important"
+    }
+  ],
+  "feeds_intelligence": {
+    "user_types_hint": ["operator (primary)", "approver (secondary)"],
+    "user_goals_hint": ["fast name-based lookup", "accountable override"],
+    "error_tolerance_hint": "medium — overrides need an audit trail"
+  }
+}

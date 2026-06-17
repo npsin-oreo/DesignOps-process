@@ -105,7 +105,7 @@ json.dump({
  "accessibility_needs":{"wcag_target":"AA_plus","default_floor":"WCAG 2.2 AA","specific_needs":[],"motion_sensitivity":False,"drivers":["clinical"]},
  "compliance_requirements":[{"id":"C01","name":"HIPAA","scope":"medical","source":"stated","mandatory":True,"ui_implications":["audit trail"],"confidence":"high"}],
  "decision_criticality":{"overall":"safety_critical","decision_points":[{"task_ref":"T01","stakes":"safety","who_bears_consequence":"user","info_completeness_need":"high","recommended_patterns":["double-confirm"]}]},
- "design_directives":{"density_target":3,"guidance_level":"expert","safeguard_level":"maximal","a11y_target":"AA_plus","mandatory_flows":["audit_log"],"navigation_model":"workspace","trust_emphasis":"high"},
+ "design_directives":{"density_target":3,"guidance_level":"expert","safeguard_level":"maximal","a11y_target":"AA_plus","mandatory_flows":["audit_log"],"navigation_model":"workspace","trust_emphasis":"high","rationale":"safety_critical + irreversible actions drive maximal safeguards and expert density","trade_offs":[{"decision":"confirmation friction","chose":"double-confirm on critical actions","over":"one-click speed","because":"error_tolerance is zero"}]},
  "open_questions":[]
 }, open(sys.argv[1],"w"))
 PY
@@ -119,6 +119,11 @@ python3 "$VALIDATE_INTEL" "$TMP/i_bad2.json" >/dev/null 2>&1 && bad "a11y rollup
 # missing top-level key
 python3 -c "import json;d=json.load(open('$TMP/intel.json'));d.pop('design_directives');json.dump(d,open('$TMP/i_bad3.json','w'))"
 python3 "$VALIDATE_INTEL" "$TMP/i_bad3.json" >/dev/null 2>&1 && bad "missing design_directives should fail" || ok "missing required key → exit 1"
+# reasoning trace: rationale required; malformed trade_off rejected
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directives'].pop('rationale');json.dump(d,open('$TMP/i_bad4.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_bad4.json" >/dev/null 2>&1 && bad "missing rationale should fail" || ok "design_directives.rationale required → exit 1"
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directives']['trade_offs']=[{'decision':'x'}];json.dump(d,open('$TMP/i_bad5.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_bad5.json" >/dev/null 2>&1 && bad "incomplete trade_off should fail" || ok "trade_off needs decision/chose/over/because → exit 1"
 
 # ── T7. Flows gate (Step 3) ───────────────────────────────────────────────────
 echo "[T7] flows gate — valid passes, nav_model mismatch fails"

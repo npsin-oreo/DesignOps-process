@@ -16,6 +16,7 @@ a teardown** — the gate enforces that distinction so nobody ships strategy bui
 3. **Table-stakes are not optional silently.** Skipping a `table_stakes` capability requires a `rationale` (the gate warns and surfaces it as risk).
 
 > Validated by `scripts/validate_competitive.py`. Feeds `intelligence.json` (density/pattern hints) + `aesthetic.json` (positioning).
+> Worked example + ingest (provide competitor URLs/teardowns to upgrade inferred→hybrid): `examples/competitive.example.json` + `examples/README.md`.
 
 ---
 

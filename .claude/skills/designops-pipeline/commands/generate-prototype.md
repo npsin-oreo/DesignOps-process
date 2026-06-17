@@ -402,6 +402,14 @@ cd output/prototype && npm install && npm run dev
 # → http://localhost:3000
 \`\`\`
 
+## Design strategy (why this shape)
+[design_directives.rationale from intelligence.json — the short why, grounded in the dimensions + research/competitive evidence]
+
+Key trade-offs:
+| Decision | Chose | Over | Because |
+|----------|-------|------|---------|
+[rows from design_directives.trade_offs]
+
 ## Screen inventory
 | Screen | Route | Flow | Priority | Status |
 |--------|-------|------|----------|--------|

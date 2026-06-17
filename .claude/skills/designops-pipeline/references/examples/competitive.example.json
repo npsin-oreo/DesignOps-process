@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "source_brief": "output/brief.json",
+    "generated_at": "2026-06-17T00:00:00Z",
+    "schema_version": "1.0",
+    "evidence_mode": "inferred",
+    "inputs_provided": [],
+    "overall_confidence": "medium",
+    "human_reviewed": false
+  },
+  "competitors": [
+    { "id": "CMP01", "name": "Incumbent PMS", "type": "direct", "positioning": "enterprise, feature-heavy, slow",
+      "source": "inferred", "evidence": [], "confidence": "medium" },
+    { "id": "CMP02", "name": "Tablet check-in app", "type": "indirect", "positioning": "consumer-grade, limited back-office",
+      "source": "inferred", "evidence": [], "confidence": "low" }
+  ],
+  "feature_benchmark": [
+    { "id": "FB01", "capability": "name-based guest search", "competitor_refs": ["CMP01", "CMP02"],
+      "prevalence": "table_stakes", "our_stance": "match", "rationale": "expected baseline at any desk",
+      "source": "inferred", "evidence": [], "confidence": "medium" },
+    { "id": "FB02", "capability": "sub-10s check-in flow", "competitor_refs": ["CMP01"],
+      "prevalence": "differentiator", "our_stance": "exceed", "rationale": "incumbent is slow — this is our wedge",
+      "source": "inferred", "evidence": [], "confidence": "low" }
+  ],
+  "ux_pattern_conventions": [
+    { "id": "PC01", "pattern": "left-nav app shell", "surface": "dashboard", "convention": "follow", "reason": "",
+      "source": "inferred", "evidence": [], "confidence": "medium" },
+    { "id": "PC02", "pattern": "command palette as primary search", "surface": "check-in", "convention": "break",
+      "reason": "operators are non-power users on a shared kiosk; a visible search field beats a hidden hotkey",
+      "source": "inferred", "evidence": [], "confidence": "medium" }
+  ],
+  "differentiation": [
+    { "id": "D01", "axis": "speed of check-in", "our_position": "sub-10s vs incumbent ~30s",
+      "defensibility": "med", "source": "inferred", "evidence": [], "confidence": "low" }
+  ],
+  "table_stakes": ["name + reference guest search", "booking lookup", "room assignment"],
+  "feeds": {
+    "intelligence_density_hint": "medium — list-heavy but not analytics-dense",
+    "aesthetic_hint": "trustworthy + efficient; differentiate on speed, not visual noise"
+  }
+}

@@ -311,6 +311,10 @@ grep -q '_authToken' "$SETUP" && grep -q 'DS_REGISTRY' "$SETUP" && ok "scaffold 
 grep -q 'falling back to offline rsync' "$SETUP" && ok "import-failure → rsync fallback (graceful)" || bad "rsync fallback branch missing"
 # default scope must be the published package
 grep -q '@npsin-oreo/design-system' "$SETUP" && ok "default import pkg = @npsin-oreo/design-system" || bad "default import pkg wrong/missing"
+# security: default version pinned (no floating 'latest') + exact install
+grep -qE 'IMPORT_PKG="@npsin-oreo/design-system@\$\{DS_VERSION\}"' "$SETUP" && ok "default DS version is pinned (no floating latest)" || bad "default DS version not pinned"
+grep -q -- '--save-exact' "$SETUP" && ok "DS installed with --save-exact (reproducible lockfile)" || bad "--save-exact missing"
+grep -q 'dependency confusion' "$SETUP" && ok "dependency-confusion note on scope→registry binding" || bad "dependency-confusion guard note missing"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

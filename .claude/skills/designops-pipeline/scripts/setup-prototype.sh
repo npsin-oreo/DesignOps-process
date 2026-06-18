@@ -22,7 +22,10 @@ DS="./design-system"
 OUT="./output"
 IMPORT_MODE=0          # default: copy (rsync) the DS — unchanged behavior
 AUTO_MODE=0            # --ds-auto: prefer import (Model A) when possible, else fall back to rsync
-IMPORT_PKG="@npsin-oreo/design-system"  # install spec when --ds-import is used (name, name@version, or tarball)
+# Pinned default DS version (security: never float to `latest` — a republished/compromised
+# `latest` would flow straight into builds). Bump this when adopting a new DS release.
+DS_VERSION="0.1.2"
+IMPORT_PKG="@npsin-oreo/design-system@${DS_VERSION}"  # install spec for --ds-import (pinned; override with --ds-pkg)
 DS_NAME=""             # bare package name for CSS @import/@source (defaults from IMPORT_PKG)
 # Registry for the DS scope. The DS publishes to GitHub Packages, which requires auth even
 # for public packages — so import-mode writes a scaffold .npmrc pointing the scope there with
@@ -122,6 +125,9 @@ CSS
   # Scaffold .npmrc so `npm install` can fetch a scoped DS from a private registry
   # (GitHub Packages requires auth even for public packages). Skip for tarball/path
   # specs and when --ds-registry "" (plain public-npm package).
+  # SECURITY (dependency confusion): the `<scope>:registry=` line BINDS the whole DS scope
+  # to GitHub Packages, so npm never resolves @<scope>/* from public npmjs — even though the
+  # name is currently unclaimed there. Keep this line; do not loosen the scope.
   case "$IMPORT_PKG" in
     *.tgz|./*|../*|/*) : ;;                        # local spec — no registry auth needed
     @*/*)
@@ -140,9 +146,12 @@ NPMRC
       ;;
   esac
 
-  log "Import mode — installing $DS_NAME + Next/Tailwind (NOT copying the DS)…"
+  log "Import mode — installing $DS_NAME ($IMPORT_PKG, pinned) + Next/Tailwind (NOT copying the DS)…"
+  # --save-exact pins the DS to an exact version in package.json (no caret) so the committed
+  # lockfile is reproducible and a republished version can't silently flow into a later install.
   if ( cd "$PROTO" \
-        && npm install "$IMPORT_PKG" next react react-dom --no-audit --no-fund \
+        && npm install "$IMPORT_PKG" --save-exact --no-audit --no-fund \
+        && npm install next react react-dom --no-audit --no-fund \
         && npm install -D tailwindcss @tailwindcss/postcss typescript @types/node @types/react @types/react-dom --no-audit --no-fund ); then
     log "✓ prototype (import mode) ready → $PROTO — DS imported, not copied (point 5)"
     log "  add screens under $PROTO/app, then: cd $PROTO && npm run dev"

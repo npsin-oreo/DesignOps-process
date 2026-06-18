@@ -940,23 +940,37 @@ npm run storybook                                # interactive explorer at :6006
 
 ---
 
-## Step 5 — Figma Screens (separate pipeline)
+## Step 5 — Figma output (repeatable, generated from artifacts)
 
-> Runs separately after Step 4 finishes — **not part of `run_pipeline.sh`**.
-> This step is **manual / agent-driven via the Figma MCP**, not a shell script.
-> Requires the Figma MCP server connected in Claude Code.
+> Runs separately after Step 4 — **not part of `run_pipeline.sh`**. Agent-driven via the **Figma
+> MCP** (needs the Figma MCP server connected + a target `figma.com/design/...` file).
+> No Figma MCP? Skip — Steps 1–4.7 already produce a runnable, audited prototype + handoff doc.
 
-Ask Claude (in Claude Code, with Figma MCP available):
-> "Build Figma screens from `output/prototype/` using the design tokens"
+Produces **one Figma file / 5 pages** (Cover · Foundations · Components · Screens · Flows) built
+from the pipeline artifacts, in the strict order **variables → components → screens → flows**. Full
+contract: **`references/figma/output-spec.md`**.
 
-**Process the agent follows:**
-1. Read the prototype's tokens (`output/prototype/app/globals.css`) → create Figma variables via the `figma-generate-library` skill
-2. Read each generated screen under `output/prototype/app/**/page.tsx` → parse layout, components, styles
-3. Build Figma frames via the `figma-generate-design` skill, one screen at a time
-4. Map CSS variables → Figma variable bindings
+**Process:**
+1. **Prep (deterministic):** `python3 scripts/figma_prep.py --tokens <DS>/tokens.json --aesthetic
+   output/aesthetic.json --screens output/screen-inventory.json --flows output/flows.json
+   --brief output/brief.json --out /tmp/figbuild` → compact token blobs + `theme.json` +
+   `manifest.json` (device size, components, screens, flows). Skips speculative brand hues
+   (`cerulean-blue,coral`) by default.
+2. Load skills **`figma-use` + `figma-generate-library`**; the MCP tools are deferred as
+   `mcp__figma__*` (fetch via `ToolSearch`).
+3. **Variables** — import the library layer + trim `brand-color` to primary/secondary + build the
+   **Theme** semantic collection (Light/Dark, live-aliased into the library) + set default font
+   **Noto Sans Thai** (brand override if `aesthetic.json` names another). Recipe:
+   `references/figma/01-variables.md`.
+4. **Components** — DS components as variant sets, bound to Theme tokens. `references/figma/02-components.md`.
+5. **Screens** — each `screen-inventory.json` entry as a frame at the device size, composed from
+   component instances, Theme=Light. `references/figma/03-screens.md`.
+6. **Flows** — one flow per Action (screens as nodes + decision diamonds + green happy / red
+   error→error-state). `references/figma/04-flows.md`.
 
-> See the `figma-generate-library` and `figma-generate-design` skills for details.
-> No Figma MCP? Skip Step 5 — Steps 1–4.7 already produce a runnable, audited prototype + handoff doc.
+Validate each layer with `get_screenshot` before the next. Pitfalls (token-blob size limit,
+`setBoundVariableForPaint`, FILL-after-append, font loading, diamond/arrow shapes):
+**`references/figma/mcp-gotchas.md`**.
 
 ---
 

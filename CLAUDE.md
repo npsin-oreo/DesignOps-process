@@ -8,7 +8,11 @@ This project is **standalone** — the core pipeline (TOR → brief → draft �
 | Path | Role | When used |
 |------|------|-----------|
 | `./design-system/` | **DS (vendored, in-repo)** — shadcn-skills-design-starter source-only (~2MB, 52 components, no node_modules) | Step 3 (`--ds` default) + base for the POC prototype |
-| `../Hand-off-test/` | **Handoff (optional, outside repo)** — whitelabel target for the token bridge | Step 4.5 only — runs when `--handoff` is passed |
+
+> The standalone DS is being split into an imported package `@npsin-oreo/design-system` (Model A).
+> Theming is owned by Step 2.6 → `brand.config.json` → the product scaffold. The old `--handoff`
+> Step 4.5 token-bridge (pushing tokens into a whitelabel repo) is **deprecated** and not part of
+> this flow — see `docs/ds-split/`.
 
 `run_pipeline.sh` auto-resolves `--ds` in this order: `TOR_DS_PATH` env → `./design-system` (in-repo) → `../shadcn-skills-design-starter` (fallback)
 
@@ -17,12 +21,6 @@ This project is **standalone** — the core pipeline (TOR → brief → draft �
 bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
   --tor docs/tor.pdf \
   --out ./output
-
-# (optional) add the token bridge into the handoff repo
-# NOTE: requires a separate Hand-off-test repo (not bundled). Skip --handoff if you don't have it.
-bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
-  --tor docs/tor.pdf --out ./output \
-  --handoff ../Hand-off-test --brand my-brand
 ```
 
 > Note: `./design-system` is source-only — when building the actual prototype, the pipeline copies it to `output/prototype/` and runs `npm install` once there.

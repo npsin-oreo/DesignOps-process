@@ -1,0 +1,10 @@
+{
+  "name": "product-repo-poc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PoC product repo — IMPORTS @acme/ds-poc from node_modules (point 5: no copy)",
+  "dependencies": {
+    "@acme/ds-poc": "file:../packages/ds"
+  }
+}

@@ -1,0 +1,20 @@
+/* PROOF #3 — token distribution.
+ * Today tokens live in design-system/app/globals.css as Tailwind v4 `@theme`.
+ * They ship as a consumable preset; the product does:
+ *   @import "@acme/ds-poc/tokens.css";
+ *   @source "../node_modules/@acme/ds-poc";   <- Tailwind v4 must scan package classes
+ * brand.config.json in the PRODUCT repo (point 6) overrides --primary etc. on top.
+ */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --radius: 0.625rem;
+}
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+}

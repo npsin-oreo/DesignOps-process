@@ -180,6 +180,13 @@ python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aes_contrast.json" "$TMP/aes_
 # a11y_target must echo design_directives
 python3 -c "import json;d=json.load(open('$TMP/aesthetic.json'));d['constraints']['a11y_target']='AAA';json.dump(d,open('$TMP/aes_a11y.json','w'))"
 python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aes_a11y.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && bad "a11y mismatch should fail" || ok "a11y_target must equal directive → exit 1"
+# optional token-contract check: tokens must be ⊆ the DS contract (passed as 3rd arg)
+cat > "$TMP/contract.json" <<'PY'
+{"package":"@npsin-oreo/design-system","color_tokens":["primary","background","foreground"],"scalar_tokens":["radius","font_sans"]}
+PY
+python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aesthetic.json" "$TMP/aes_intel.json" "$TMP/contract.json" >/dev/null 2>&1 && ok "tokens ⊆ contract → exit 0" || bad "valid tokens within contract should pass"
+python3 -c "import json;d=json.load(open('$TMP/aesthetic.json'));d['tokens']['glow_accent']='oklch(0.7 0.2 30)';json.dump(d,open('$TMP/aes_contract_bad.json','w'))"
+python3 "$SCRIPTS_DIR/validate_aesthetic.py" "$TMP/aes_contract_bad.json" "$TMP/aes_intel.json" "$TMP/contract.json" >/dev/null 2>&1 && bad "token outside contract should fail" || ok "token not in DS contract → exit 1 (BLOCKED)"
 
 # ── T10. Audit gate (Step 4.7) — runs real scripts over a fake prototype ──────
 echo "[T10] audit gate — clean passes, hardcode + low-contrast block"
@@ -293,6 +300,21 @@ JSON
 python3 "$SCRIPTS_DIR/validate_usability.py" "$TMP/usability.json" >/dev/null 2>&1 && ok "valid usability (simulated) → exit 0" || bad "valid usability should pass"
 python3 -c "import json;d=json.load(open('$TMP/usability.json'));d['meta']['not_real_user_testing']=False;json.dump(d,open('$TMP/usability_bad.json','w'))"
 python3 "$SCRIPTS_DIR/validate_usability.py" "$TMP/usability_bad.json" >/dev/null 2>&1 && bad "fake real test should fail" || ok "not_real_user_testing must be true → exit 1 (BLOCKED)"
+
+# ── T13. setup-prototype DS resolution (Model A import + graceful default) ────
+echo "[T13] setup-prototype — --ds-auto graceful default (import ↔ rsync)"
+SETUP="$SCRIPTS_DIR/setup-prototype.sh"
+bash -n "$SETUP" 2>/dev/null && ok "setup-prototype.sh parses (bash -n)" || bad "setup-prototype.sh syntax error"
+grep -q -- '--ds-auto)' "$SETUP" && grep -q -- '--ds-import)' "$SETUP" && ok "--ds-auto + --ds-import flags parsed" || bad "DS-mode flags missing"
+grep -q 'GITHUB_TOKEN' "$SETUP" && grep -q 'trying import mode' "$SETUP" && ok "auto: token-gated import decision present" || bad "graceful import decision missing"
+grep -q '_authToken' "$SETUP" && grep -q 'DS_REGISTRY' "$SETUP" && ok "scaffold .npmrc (scope → registry) wired" || bad "scaffold .npmrc wiring missing"
+grep -q 'falling back to offline rsync' "$SETUP" && ok "import-failure → rsync fallback (graceful)" || bad "rsync fallback branch missing"
+# default scope must be the published package
+grep -q '@npsin-oreo/design-system' "$SETUP" && ok "default import pkg = @npsin-oreo/design-system" || bad "default import pkg wrong/missing"
+# security: default version pinned (no floating 'latest') + exact install
+grep -qE 'IMPORT_PKG="@npsin-oreo/design-system@\$\{DS_VERSION\}"' "$SETUP" && ok "default DS version is pinned (no floating latest)" || bad "default DS version not pinned"
+grep -q -- '--save-exact' "$SETUP" && ok "DS installed with --save-exact (reproducible lockfile)" || bad "--save-exact missing"
+grep -q 'dependency confusion' "$SETUP" && ok "dependency-confusion note on scope→registry binding" || bad "dependency-confusion guard note missing"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

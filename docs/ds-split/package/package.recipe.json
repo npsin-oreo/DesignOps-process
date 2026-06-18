@@ -1,0 +1,47 @@
+{
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "app/globals.css",
+    "tokens.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/lib/utils.d.ts",
+      "import": "./dist/lib/utils.js"
+    },
+    "./*": {
+      "types": "./dist/components/ui/*.d.ts",
+      "import": "./dist/components/ui/*.js"
+    },
+    "./lib/*": {
+      "types": "./dist/lib/*.d.ts",
+      "import": "./dist/lib/*.js"
+    },
+    "./hooks/*": {
+      "types": "./dist/hooks/*.d.ts",
+      "import": "./dist/hooks/*.js"
+    },
+    "./globals.css": "./app/globals.css",
+    "./package.json": "./package.json",
+    "./tokens.css": "./tokens.css"
+  },
+  "imports": {
+    "#lib/*": "./dist/lib/*.js",
+    "#components/*": "./dist/components/*.js",
+    "#hooks/*": "./dist/hooks/*.js"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19",
+    "radix-ui": "^1.4.3",
+    "lucide-react": "^1.17.0",
+    "class-variance-authority": "^0.7.1"
+  },
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json"
+  }
+}

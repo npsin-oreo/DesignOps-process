@@ -313,8 +313,10 @@ The core pipeline depends on **no external repo**. The design system is vendored
 and DTCG token kit live under `references/`. `run_pipeline.sh` resolves `--ds` in order:
 `TOR_DS_PATH` env → `./design-system` (in-repo) → `../shadcn-skills-design-starter` (fallback).
 
-The optional `--handoff` token bridge (hex → oklch into a whitelabel repo) is a separate downstream
-stage and needs a `Hand-off-test` repo that is **not bundled** — skip it if you don't have one.
+The `--handoff` token bridge (hex → oklch into a whitelabel repo) is **deprecated**. Under Model A
+the DS is the imported `@npsin-oreo/design-system` package and theming is owned by Step 2.6 → the product
+scaffold, so there is no token-bridge step in the normal flow. The flag is kept for back-compat only
+against a repo that still ships `brand.config.json` + `npm run brand:build` (never the DS repo).
 
 ---
 

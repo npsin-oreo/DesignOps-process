@@ -1,0 +1,25 @@
+{
+  "name": "@acme/ds-poc",
+  "version": "1.0.0",
+  "description": "PoC: design-system distributed as an importable package (not copied)",
+  "type": "module",
+  "files": ["dist", "tokens.css", "contracts"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens.css": "./tokens.css",
+    "./contracts/*": "./contracts/*"
+  },
+  "imports": {
+    "#lib/*": "./dist/lib/*.js"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": false }
+  }
+}

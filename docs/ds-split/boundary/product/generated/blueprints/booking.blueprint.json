@@ -1,0 +1,14 @@
+{
+  "screen": "Booking",
+  "layout": "single",
+  "regions": [
+    { "slot": "form", "components": ["Input", "DatePicker", "Button"] }
+  ],
+  "data_contract": {
+    "name": "BookingData",
+    "fields": { "nights": "number", "rate": "number", "roomId": "string" }
+  },
+  "actions": [
+    { "name": "submitBooking", "contract": "BookingActions" }
+  ]
+}

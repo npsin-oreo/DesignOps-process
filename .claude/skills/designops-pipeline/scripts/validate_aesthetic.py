@@ -47,7 +47,7 @@ def _load(path):
         return None, f"file not found: {path}"
 
 
-def validate(aesthetic_path, intel_path=None):
+def validate(aesthetic_path, intel_path=None, contract_path=None):
     errors, warnings = [], []
     d, err = _load(aesthetic_path)
     if err:
@@ -160,14 +160,36 @@ def validate(aesthetic_path, intel_path=None):
         if missing:
             warnings.append(f"contrast_checks is missing recommended pairs: {sorted(missing)}")
 
+    # ── token contract (optional — only when a DS token-contract.json is given) ───
+    # The DS repo owns which tokens are themeable; DesignOps 2.6 may only set those.
+    # No contract passed → behaviour unchanged (back-compatible).
+    if contract_path:
+        contract, cerr = _load(contract_path)
+        if cerr or not isinstance(contract, dict):
+            warnings.append(f"token contract not read ({contract_path}) — skipped contract check")
+        else:
+            allowed = set(contract.get("color_tokens", [])) | set(contract.get("scalar_tokens", []))
+            if not allowed:
+                warnings.append("token contract lists no tokens — skipped contract check")
+            else:
+                NON_TOKEN = {"project_name"}  # brand_config metadata, not a themeable token
+                pkg = contract.get("package", "the DS")
+                for src in ("tokens", "brand_config"):
+                    for k in (d.get(src) or {}):
+                        if k in NON_TOKEN:
+                            continue
+                        if k not in allowed:
+                            errors.append(f"{src}.{k!r} is not in {pkg}'s token contract — "
+                                          "2.6 may only theme tokens the design system exposes")
+
     return errors, warnings
 
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: validate_aesthetic.py <aesthetic.json> [intelligence.json]", file=sys.stderr)
+        print("Usage: validate_aesthetic.py <aesthetic.json> [intelligence.json] [token-contract.json]", file=sys.stderr)
         sys.exit(1)
-    errors, warnings = validate(*sys.argv[1:3])
+    errors, warnings = validate(*sys.argv[1:4])
     if errors:
         print(f"[validate_aesthetic] ✗ Invalid — {len(errors)} error(s):", file=sys.stderr)
         for e in errors:

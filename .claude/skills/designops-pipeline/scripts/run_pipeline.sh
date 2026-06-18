@@ -11,17 +11,22 @@
 #     `claude -p` per step. Refused if CLAUDECODE is set (recursion guard).
 #
 # Usage:
-#   Full pipeline:  run_pipeline.sh --tor <path> --ds <path> [--out <dir>] [--handoff <path>] [--brand <name>]
+#   Full pipeline:  run_pipeline.sh --tor <path> --ds <path> [--out <dir>]
 #   Step 1+2 only:  run_pipeline.sh --tor <path> [--out <dir>]
 #   Step 3 only:    run_pipeline.sh --brief <path> --ds <path> [--out <dir>]
-#   With bridge:    run_pipeline.sh --tor <path> --handoff <path/to/Hand-off-test> [--brand <name>]
 #   Headless:       run_pipeline.sh --tor <path> --exec        # outside Claude Code only
+#
+#   DEPRECATED:     --handoff <repo> [--brand <name>]   # legacy Step 4.5 token-bridge
+#     Pushes tokens INTO a whitelabel target repo and rebuilds its brand.css. Under the
+#     current Model A (DS = @npsin-oreo/design-system, theming via Step 2.6 → product scaffold)
+#     this is no longer part of the flow. Kept for back-compat ONLY for a repo that still
+#     ships brand.config.json + `npm run brand:build`. Do NOT point it at the DS repo.
 #
 # Env vars:
 #   TOR_OUTPUT_DIR    — output directory (default: ./tor-output)
 #   TOR_DS_PATH       — design system path override (default: ../shadcn-skills-design-starter)
-#   TOR_HANDOFF_PATH  — Hand-off-test repo path (if set, runs the bridge automatically)
-#   TOR_BRAND_NAME    — brand name for brand.config.json (default: poc-brand)
+#   TOR_HANDOFF_PATH  — (deprecated) whitelabel repo path for the legacy token-bridge
+#   TOR_BRAND_NAME    — brand name for the legacy bridge's brand.config.json (default: poc-brand)
 
 set -euo pipefail
 
@@ -297,6 +302,15 @@ fi
 # prototype a real look instead of the neutral shadcn default ("design slop").
 AESTHETIC_JSON="$OUT_DIR/aesthetic.json"
 AESTHETICS_DIR="$SKILL_DIR/references/aesthetics"
+# Optional DS token contract (Model A): if present, Step 2.6 may only theme tokens the DS
+# exposes. From TOR_DS_CONTRACT, else an installed @npsin-oreo/design-system. Unset → unchanged.
+DS_CONTRACT="${TOR_DS_CONTRACT:-}"
+if [[ -z "$DS_CONTRACT" ]]; then
+  for _c in "$OUT_DIR/prototype/node_modules/@npsin-oreo/design-system/token-contract.json" \
+            "./node_modules/@npsin-oreo/design-system/token-contract.json"; do
+    [[ -f "$_c" ]] && DS_CONTRACT="$_c" && break
+  done
+fi
 # Stage whenever a brief exists (like flows/intelligence) — the prompt references
 # intelligence.json by PATH; the agent produces it earlier in the same run.
 if [[ ! -f "$AESTHETIC_JSON" ]]; then
@@ -345,7 +359,8 @@ fi
 # validate aesthetic.json (gate) — recomputes contrast from hex, checks brand resolves
 if [[ -f "$AESTHETIC_JSON" ]]; then
   step "Validating aesthetic.json"
-  python3 "$SKILL_DIR/scripts/validate_aesthetic.py" "$AESTHETIC_JSON" "$INTEL_JSON" || {
+  [[ -n "$DS_CONTRACT" ]] && log "  using DS token contract: $DS_CONTRACT"
+  python3 "$SKILL_DIR/scripts/validate_aesthetic.py" "$AESTHETIC_JSON" "$INTEL_JSON" ${DS_CONTRACT:+"$DS_CONTRACT"} || {
     err "aesthetic.json validation failed — fix it first, or re-run Step 2.6"
   }
   log "✓ aesthetic.json valid"
@@ -551,12 +566,16 @@ else
   log "Run later with: run_pipeline.sh --brief $BRIEF_JSON --ds <path> --out $OUT_DIR"
 fi
 
-# ── step 4.5: token bridge → hand-off repo ───────────────────────────────────
+# ── step 4.5 (DEPRECATED): token bridge → whitelabel repo ────────────────────
+# Legacy path. Model A themes via Step 2.6 → product scaffold (--ds-import), NOT by
+# pushing tokens into the DS repo. Only runs when --handoff is explicitly passed at a
+# repo that still ships brand.config.json + `npm run brand:build`. Never the DS repo.
 TOKENS_JSON="$OUT_DIR/poc-delivery/design-system/tokens.json"
 HANDOFF_PATH="${TOR_HANDOFF_PATH:-}"
 
 if [[ -f "$TOKENS_JSON" && -n "$HANDOFF_PATH" ]]; then
-  step "Step 4.5 — Bridging tokens to Hand-off repo (hex → oklch)"
+  step "Step 4.5 (DEPRECATED) — Bridging tokens to whitelabel repo (hex → oklch)"
+  log "⚠  --handoff is a legacy whitelabel token-bridge; not part of Model A. See header."
 
   [[ -d "$HANDOFF_PATH" ]] || err "handoff directory not found: $HANDOFF_PATH"
 
@@ -588,13 +607,9 @@ if [[ -f "$TOKENS_JSON" && -n "$HANDOFF_PATH" ]]; then
     log "  node $BRIDGE_SCRIPT --tokens $TOKENS_JSON --handoff $HANDOFF_PATH"
   fi
 
-elif [[ -f "$TOKENS_JSON" && -z "$HANDOFF_PATH" ]]; then
-  log "ℹ  tokens.json is ready but --handoff was not provided"
-  log "  Run the bridge later with:"
-  log "  node $SKILL_DIR/scripts/bridge-tokens.mjs \\"
-  log "    --tokens  $TOKENS_JSON \\"
-  log "    --handoff <path/to/Hand-off-test>"
 fi
+# (no else: --handoff is deprecated; nothing to nudge when it's absent — the normal
+#  Model A flow themes via Step 2.6 → product scaffold, no bridge needed.)
 
 # ── final summary ─────────────────────────────────────────────────────────────
 echo ""

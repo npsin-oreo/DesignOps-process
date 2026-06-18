@@ -1,0 +1,11 @@
+{
+  "component": "Button",
+  "import": "@acme/ds-poc",
+  "props": {
+    "variant": { "enum": ["default", "outline", "secondary", "ghost", "destructive", "link"] },
+    "size": { "enum": ["xs", "sm", "md", "lg", "default"] },
+    "disabled": { "type": "boolean" }
+  },
+  "slots": ["children"],
+  "stable_since": "1.0.0"
+}

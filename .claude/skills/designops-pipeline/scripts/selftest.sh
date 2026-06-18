@@ -316,6 +316,32 @@ grep -qE 'IMPORT_PKG="@npsin-oreo/design-system@\$\{DS_VERSION\}"' "$SETUP" && o
 grep -q -- '--save-exact' "$SETUP" && ok "DS installed with --save-exact (reproducible lockfile)" || bad "--save-exact missing"
 grep -q 'dependency confusion' "$SETUP" && ok "dependency-confusion note on scope→registry binding" || bad "dependency-confusion guard note missing"
 
+# ── T14. Step 5 Figma output spec + figma_prep ────────────────────────────────
+echo "[T14] Step 5 Figma — spec/recipes present + figma_prep runs"
+FG="$REFS/figma"
+for f in output-spec 01-variables 02-components 03-screens 04-flows mcp-gotchas; do
+  [ -f "$FG/$f.md" ] || bad "missing references/figma/$f.md"
+done
+[ -f "$FG/output-spec.md" ] && [ -f "$FG/mcp-gotchas.md" ] && ok "figma spec + recipes + gotchas present" || bad "figma references incomplete"
+python3 -c "import ast,sys; ast.parse(open('$SCRIPTS_DIR/figma_prep.py').read())" 2>/dev/null && ok "figma_prep.py parses" || bad "figma_prep.py syntax error"
+# minimal fixtures
+cat > "$TMP/tok.json" <<'JSON'
+{"$metadata":{"tokenSetOrder":["tw-colors/Mode 1","brand-color/Mode 1","tokens/Mode 1"]},
+"tw-colors/Mode 1":{"pink":{"700":{"$value":"#be185d","$type":"color"}},"white":{"$value":"#ffffff","$type":"color"},"gray":{"900":{"$value":"#111827","$type":"color"}}},
+"brand-color/Mode 1":{"primary":{"500":{"$value":"#be185d","$type":"color"}},"coral":{"500":{"$value":"#ff0000","$type":"color"}},"cerulean-blue":{"500":{"$value":"#0000ff","$type":"color"}}},
+"tokens/Mode 1":{"16":{"$value":"16px","$type":"dimension"},"al":{"$value":"{16}","$type":"dimension"}}}
+JSON
+echo '{"brand_config":{"primary":"#be185d","font_sans":"Nunito"},"tokens":{"secondary":"#fce7f3"}}' > "$TMP/aes.json"
+echo '{"meta":{"platform":"mobile-first"},"screens":[{"id":"SCR1","name":"Home","components":["button","card"]}]}' > "$TMP/scr.json"
+echo '{"flows":[{"id":"FL1","name":"A","steps":[{"action":"x"}]}]}' > "$TMP/flw.json"
+if python3 "$SCRIPTS_DIR/figma_prep.py" --tokens "$TMP/tok.json" --aesthetic "$TMP/aes.json" --screens "$TMP/scr.json" --flows "$TMP/flw.json" --out "$TMP/fb" >/dev/null 2>&1; then
+  ok "figma_prep runs on fixtures → exit 0"
+else bad "figma_prep failed on fixtures"; fi
+[ -f "$TMP/fb/theme.json" ] && [ -f "$TMP/fb/manifest.json" ] && ok "emits theme.json + manifest.json" || bad "figma_prep outputs missing"
+python3 -c "import json,sys; d=json.load(open('$TMP/fb/theme.json')); sys.exit(0 if len(d)==19 else 1)" 2>/dev/null && ok "theme has 19 semantic tokens" || bad "theme token count wrong"
+python3 -c "import json,glob,sys; bc=[f for f in glob.glob('$TMP/fb/vars_*brand-color*.json')][0]; items=json.load(open(bc))['items']; n=[i[0] for i in items]; sys.exit(0 if not any('coral' in x or 'cerulean' in x for x in n) and any('primary' in x for x in n) else 1)" 2>/dev/null && ok "brand-color trimmed (no cerulean/coral, keeps primary)" || bad "brand-color trim failed"
+python3 -c "import json,sys; m=json.load(open('$TMP/fb/manifest.json')); sys.exit(0 if m['device']['name']=='Mobile' and m['font_default']=='Noto Sans Thai' else 1)" 2>/dev/null && ok "manifest device=Mobile + default font=Noto Sans Thai" || bad "manifest device/font wrong"
+
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"

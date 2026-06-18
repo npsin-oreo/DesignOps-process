@@ -58,7 +58,7 @@ runs. It works for any kind of product — there are no fixed industry templates
          ▼  4.7b  runtime audit (optional) — axe · states · focus-trap · taste   (Playwright)
          ▼  4.8   Storybook QA (optional, opt-in)
          │
-         ▼  5     Figma screens (separate, Figma MCP)
+         ▼  5     Figma output — 5 pages, generated from artifacts   figma_prep.py + Figma MCP
 ```
 
 ---
@@ -117,7 +117,7 @@ cd output/prototype && npm install && npm run dev   # → http://localhost:3000
 | **4.6** | Scored critique → auto-fix critical + quick wins | `docs/critique.md` | (agent) |
 | **4.7** | **Audit gate** — token + WCAG + no-emoji | `docs/audit-report.md` | `audit_prototype.py` 🔴 exit 1 |
 | **4.8** | Storybook QA (opt-in) | — | `addon-a11y` axe pass |
-| **5** | Figma screens | Figma file | (Figma MCP) |
+| **5** | Figma output (5 pages: Cover/Foundations/Components/Screens/Flows) — generated from artifacts | Figma file | `figma_prep.py` + Figma MCP |
 
 ---
 

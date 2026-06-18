@@ -12,6 +12,7 @@ this index covers the 6 that were added last and where each plugs in.
 | **migrate-design-system** | Step 2.6 alternative resolution target (external DS) | `migrate-design-system.md`, `aesthetics/design-systems/{interop-protocol,crosswalk}.md` | `aesthetics/scripts/contrast.py` |
 | **performance** | optional Step 4.7 add-on (Core Web Vitals) | `performance.md` | Lighthouse / `tokens/scripts/measure_render.mjs` (needs a running build) |
 | **governance** | repo-maintenance (not generation) — for when this becomes a living DS | `governance.md` | SemVer + changelog + `tokens/scripts/validate_tokens.py` |
+| **figma-output** | Step 5 — generate the Figma file (variables → components → screens → flows) from artifacts | `figma/output-spec.md` + `figma/0[1-4]-*.md` + `figma/mcp-gotchas.md` | `scripts/figma_prep.py` + Figma MCP (load `figma-use`, `figma-generate-library`) |
 
 ## How they relate to the pipeline
 

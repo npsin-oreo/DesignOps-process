@@ -111,9 +111,9 @@ Edit `output/prototype/app/globals.css` — change only the keys present in bran
 }
 ```
 
-If `font_sans` is overridden → also update `app/layout.tsx`:
-- Add the font via `next/font/google` or `next/font/local`
-- Update `--font-sans` in `:root`
+If `font_sans` is overridden → load the font in `app/layout.tsx`, **never** with a CSS `@import`:
+- Add the font via `next/font/google` or `next/font/local` (exposes a CSS variable, e.g. `variable: "--font-app"`), apply the variable class on `<html>`, and point `--font-sans: var(--font-app), …` in `:root`.
+- ⚠️ **Gotcha — do NOT add `@import url("https://fonts.googleapis.com/…")` to `globals.css`.** The DS `@import "@npsin-oreo/design-system/styles.css"` is inlined first, so a font `@import` lands *after* hundreds of rules and violates the CSS rule "`@import` must precede all other rules". `next build` tolerates it but **Turbopack dev returns 500 on every route**. `next/font` is self-hosted and avoids this entirely.
 
 If `dark_mode: false` → remove the `.dark { … }` block from `globals.css` and remove `ModeToggle` from the layout.
 

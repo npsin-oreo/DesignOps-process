@@ -69,7 +69,7 @@ runs. It works for any kind of product — there are no fixed industry templates
 |---|---|
 | 🧠 **Product Intelligence** | Infers 10 measurable dimensions (each with evidence + confidence) → an open `design_directives` object. No fixed industry presets. |
 | 🎨 **Aesthetic Direction** | Picks one of **138 named design systems** (apple, linear, stripe, resend…) or an archetype, resolves it to **contrast-checked** tokens. Optionally infers the look from a TOR mockup. |
-| 🛡️ **Real gates, not vibes** | Every stage has a zero-dependency validator. The audit gate is a *script* that recomputes WCAG contrast from `globals.css` (oklch→sRGB, light + dark) and lints for hardcodes + emoji — exit 1 blocks handoff. |
+| 🛡️ **Real gates, not vibes** | Every stage has a zero-dependency validator. The audit gate is a *script* with **5 checks** — hardcodes · WCAG contrast (oklch→sRGB, light + dark) · UX copy (no emoji/em-dash) · component-contracts · font-imports — exit 1 blocks handoff. |
 | 🔁 **Scored quality loop** | Step 4.6 critique = 6 weighted dimensions + Nielsen's 10 heuristics + an anti-slop gate (Banned Defaults). |
 | 🧩 **19 design skills, folded in** | ux-writing, brandkit (DTCG tokens), image-to-code, migrate-design-system, performance, governance — vendored, standalone. See [`references/SKILLS.md`](.claude/skills/designops-pipeline/references/SKILLS.md). |
 | 📦 **Standalone** | The whole pipeline depends on no external repo — design system, brand library, and token kit are all vendored in. |
@@ -115,7 +115,7 @@ cd output/prototype && npm install && npm run dev   # → http://localhost:3000
 | **3.5** | Screens from flows + DS mapping | `screen-inventory.json` · `design-first-draft.md` | `validate_screens.py` |
 | **4** | Scaffold the Next.js prototype | `output/prototype/` | — |
 | **4.6** | Scored critique → auto-fix critical + quick wins | `docs/critique.md` | (agent) |
-| **4.7** | **Audit gate** — token + WCAG + no-emoji | `docs/audit-report.md` | `audit_prototype.py` 🔴 exit 1 |
+| **4.7** | **Audit gate** — 5 checks: token · WCAG · copy · contracts · font | `docs/audit-report.md` | `audit_prototype.py` 🔴 exit 1 |
 | **4.8** | Storybook QA (opt-in) | — | `addon-a11y` axe pass |
 | **5** | Figma output (5 pages: Cover/Foundations/Components/Screens/Flows) — generated from artifacts | Figma file | `figma_prep.py` + Figma MCP |
 
@@ -179,7 +179,9 @@ python3 .claude/skills/designops-pipeline/scripts/audit_prototype.py \
 |---|------|------------------|--------|
 | 1 | **Token compliance** | `lint_hardcodes.py` — no raw hex/px/ms or `bg-gray-500`-style palette | 🔴 block |
 | 2 | **WCAG contrast** | recomputes ratios from `globals.css` (oklch→sRGB), light **and** dark, at the a11y target | 🔴 block |
-| 3 | **UX copy** | `check_no_emoji.py` — no emoji / em-dash in product UI | 🔴 block |
+| 3 | **UX copy** | no emoji / em-dash in product UI | 🔴 block |
+| 4 | **Component contracts** | `lint_component_contracts.py` — icon-only buttons need a name, every `DialogContent` a `DialogTitle`, labelled `Input` a matching `FieldLabel htmlFor` | 🔴 block |
+| 5 | **Font imports** | `lint_font_imports.py` — no remote-font CSS `@import` (500s the Turbopack dev server; use `next/font`) | 🔴 block |
 
 > **Exit 1 = BLOCKED** — handoff/Figma is blocked until it passes. Categories are machine-checked,
 > not eyeballed. It audits the **generated surface only** (`components/ui` and any `docs/` dir are
@@ -247,8 +249,8 @@ Designops-project-test/
 │   ├── scripts/
 │   │   ├── run_pipeline.sh               #    runner — chains every step
 │   │   ├── validate_{brief,intelligence,flows,screens,aesthetic}.py
-│   │   ├── audit_prototype.py            #    Step 4.7 gate (token · WCAG · emoji)
-│   │   ├── lint_hardcodes.py
+│   │   ├── audit_prototype.py            #    Step 4.7 gate (5: token·WCAG·copy·contracts·font)
+│   │   ├── lint_{hardcodes,component_contracts,font_imports}.py
 │   │   └── selftest.sh                   #    44/44 regression guard
 │   └── references/
 │       ├── aesthetics/                   #    🎨 138-brand library + taste + contrast.py

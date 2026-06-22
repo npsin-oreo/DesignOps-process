@@ -5,6 +5,10 @@
 > to wire accessibility, and which tokens carry the styling. Distilled from the design system's
 > Storybook **Docs/** pages (`stories/docs/{Button,Dialog,Field}.mdx`).
 >
+> **Browse the live source:** the canonical Storybook is published from the design system repo
+> at <https://npsin-oreo.github.io/looloo-design-system/> (55 component usage-contract pages,
+> interactive). This file is the Step-4 working subset for the three highest-traffic controls.
+>
 > **Gate-enforced.** The marked rules are checked by `scripts/lint_component_contracts.py`
 > (Step 4.7 audit, **gate 4**). Build to them up front so the gate passes first try.
 > 🔴 = hard rule (blocks the audit, exit 1) · 🟡 = advisory (printed, never blocks).
@@ -157,7 +161,7 @@ Two tiers of contract — don't hand-author what you can extract:
 | Tier | What | For which components |
 |---|---|---|
 | **Deep contract** (this file) | Full prose: anatomy, Do/Don't, token mapping, a11y invariants, gate-4 rules | The high-traffic / high-a11y controls only — **Button · Dialog · Field & Input** so far |
-| **Extracted vocab** | Real `variant`/`size` keys auto-pulled from each cva component | **Everything else** — see [`component-variants.generated.md`](component-variants.generated.md) |
+| **Extracted vocab** | Real `variant`/`size` keys auto-pulled from each cva component | **Everything else** — see [`component-variants.generated.md`](component-variants.generated.md), or browse the live [Storybook Docs](https://npsin-oreo.github.io/looloo-design-system/) |
 
 - **Extracted vocab is the contract for the rest.** Regenerate it from source (never invent variant names):
   ```bash

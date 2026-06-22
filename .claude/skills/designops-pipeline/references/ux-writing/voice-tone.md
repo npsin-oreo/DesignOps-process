@@ -94,6 +94,12 @@ Distinguish **first-use** empty (guide them) from **cleared** empty (reassure th
 | **Loading** | Say what's happening | "Generating report…" not "Please wait" |
 | **Tooltips** | Add info, never repeat the label | (on a ⓘ icon) "Visible only to your team" |
 | **Labels** | Sentence case, no colon | "Email address" not "Email Address:" |
+| **Dialog title / description** | Title names the task or asks the question; description states the consequence (always before a destructive confirm) | "Delete project?" / "This permanently removes all 12 files. You can't undo this." |
+| **Icon-only buttons** | Give an `aria-label` that reads as the action — the accessible name IS the copy | `aria-label="Close"`, `aria-label="Add expense"` |
+
+> These map to the structural slots in [`../component-contracts.md`](../component-contracts.md)
+> (DialogTitle/Description, FieldLabel/FieldError, the icon-button accessible name) — the contract
+> says *which slot must exist*; this table says *what it should say*.
 
 ---
 
@@ -131,3 +137,4 @@ Distinguish **first-use** empty (guide them) from **cleared** empty (reassure th
 8. Good: No directional/color-only instructions
 9. Good: Numbers as numerals; counts shown in confirmations
 10. Good: Reads naturally aloud — if it sounds robotic, rewrite it
+11. Good: Icon-only buttons have an `aria-label` that names the action; every dialog has a title

@@ -131,6 +131,22 @@ that's the first finding.
 - Do error states follow the same pattern?
 - Are there empty states?
 
+### Component contract adherence
+Score against the usage contracts in [`component-contracts.md`](component-contracts.md). The Step 4.7
+**gate 4** (`lint_component_contracts.py`) already blocks the 🔴 structural breaks below — so in the
+critique, *confirm they're clean* and spend judgment on the 🟡 items the script only flags as advisory:
+- **Button** — one primary (`variant="default"`) action per view; secondary/tertiary step down
+  (`outline`/`ghost`). Irreversible actions use `variant="destructive"`, not color alone. Async
+  submits use `loading` (spinner + `aria-busy`), not a silent disable.
+- **Button (🔴 gate)** — icon-only buttons carry an `aria-label` / `sr-only` name.
+- **Dialog** — single-purpose, short; primary action LAST in the footer; a clear Cancel beside a
+  destructive confirm; close affordance / `Esc` not suppressed; no nested/stacked modals.
+- **Dialog (🔴 gate)** — every `DialogContent`/`AlertDialogContent` has a `DialogTitle` (+ a
+  `DialogDescription` for `aria-describedby`).
+- **Field & Input** — every input has a real `FieldLabel` (placeholders are not labels); errors set
+  `aria-invalid` + a `FieldError` linked by `aria-describedby`, and never signal by red color alone.
+- **Field & Input (🔴 gate)** — an `Input` with an `id` has a matching `FieldLabel htmlFor`.
+
 ### Spacing Consistency
 - Does spacing between elements use the token scale, not magic numbers?
 - Is internal padding consistent across components of the same type?

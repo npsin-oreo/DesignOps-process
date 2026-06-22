@@ -2,12 +2,16 @@
 """
 audit_prototype.py — the Step 4.7 audit GATE, as a real runnable check (not agent judgment).
 
-Two objective, deterministic gates over the BUILT prototype:
+Four objective, deterministic gates over the BUILT prototype:
   1. Token compliance — runs lint_hardcodes.py over the generated screens; any raw hex / px /
      ms / raw Tailwind palette utility (bg-gray-500 …) that isn't a token = a violation.
   2. WCAG contrast — parses the prototype's globals.css :root + .dark token blocks, converts
      each oklch value to sRGB itself, and checks the essential foreground/background pairs at
      the a11y target (AA 4.5:1 / AAA 7:1 normal text; 3:1 for UI borders). Light AND dark.
+  3. UX copy — runs check_no_emoji.py: no emoji / em-dash in product UI (ux-writing).
+  4. Component contracts — runs lint_component_contracts.py: enforces the Button/Dialog/Field
+     usage contracts (icon-button accessible name, DialogTitle present, Input↔FieldLabel).
+Gates 3 and 4 skip cleanly (—) if their checker script is missing.
 
 By default it audits the GENERATED surface only — `components/ui` (vendored shadcn primitives),
 any `docs/` dir (DS demos + these reports), and node_modules/.next/out are auto-excluded, so you
@@ -33,6 +37,9 @@ import contrast as _contrast  # vendored WCAG checker (ratio from hex)
 
 # ux-writing emoji/dash checker (vendored under references/ux-writing/scripts)
 _EMOJI_CHECK = HERE.parent / "references" / "ux-writing" / "scripts" / "check_no_emoji.py"
+
+# component-usage contract checker (Button/Dialog/Field — references/component-contracts.md)
+_CONTRACT_CHECK = HERE / "lint_component_contracts.py"
 
 # Required pairs FAIL the gate; advisory pairs are reported only. shadcn/ui token names.
 REQUIRED_PAIRS = [
@@ -155,6 +162,16 @@ def emoji_gate(proto, scan_dirs, include_vendored):
     return proc.returncode == 0, proc.stdout.strip()
 
 
+# ── gate 4: component usage contracts (Button/Dialog/Field a11y) ───────────────
+def contract_gate(proto, scan_dirs, include_vendored):
+    targets = _collect_targets(proto, scan_dirs, include_vendored)
+    if not targets or not _CONTRACT_CHECK.is_file():
+        return None, "skipped (no targets or checker missing)"
+    proc = subprocess.run([sys.executable, str(_CONTRACT_CHECK), *targets],
+                          capture_output=True, text=True)
+    return proc.returncode == 0, proc.stdout.strip()
+
+
 # ── gate 2: WCAG contrast over the actual theme ───────────────────────────────
 def contrast_gate(css_path, a11y):
     text = css_path.read_text(errors="ignore")
@@ -211,6 +228,11 @@ def main(argv):
     out += ["## 3. UX copy — no emoji / em-dash in UI (ux-writing)",
             "```", emoji_out or "(skipped)", "```", ""]
 
+    # gate 4 (component usage contracts: Button/Dialog/Field a11y)
+    contract_ok, contract_out = contract_gate(proto, scan, include_vendored)
+    out += ["## 4. Component contracts (Button/Dialog/Field usage)",
+            "```", contract_out or "(skipped)", "```", ""]
+
     # gate 2
     css = proto / "app" / "globals.css"
     if css.is_file():
@@ -222,12 +244,13 @@ def main(argv):
         contrast_ok, cfails = False, [f"globals.css not found at {css}"]
         out += ["## 2. WCAG contrast", "globals.css not found — cannot verify.", ""]
 
-    # emoji_ok may be None (skipped) — only fails the gate when explicitly False
-    blocked = not (lint_ok and contrast_ok and emoji_ok is not False)
+    # emoji_ok / contract_ok may be None (skipped) — only fail the gate when explicitly False
+    blocked = not (lint_ok and contrast_ok and emoji_ok is not False and contract_ok is not False)
     verdict = "🔴 BLOCKED" if blocked else "🟢 PASS"
     out += ["## Verdict", f"- Token compliance: {'🟢' if lint_ok else '🔴'}",
             f"- WCAG {a11y} contrast: {'🟢' if contrast_ok else '🔴'}",
             f"- UX copy (no emoji/dash): {'🟢' if emoji_ok else ('—' if emoji_ok is None else '🔴')}",
+            f"- Component contracts: {'🟢' if contract_ok else ('—' if contract_ok is None else '🔴')}",
             "", f"**{verdict}**"]
     if cfails:
         out += ["", "### Contrast failures", *[f"- {f}" for f in cfails]]
@@ -240,7 +263,8 @@ def main(argv):
     # console summary
     print(f"[audit_prototype] {verdict} — token={'PASS' if lint_ok else 'FAIL'} · "
           f"WCAG {a11y}={'PASS' if contrast_ok else 'FAIL'} · "
-          f"copy={'PASS' if emoji_ok else ('—' if emoji_ok is None else 'FAIL')}")
+          f"copy={'PASS' if emoji_ok else ('—' if emoji_ok is None else 'FAIL')} · "
+          f"contracts={'PASS' if contract_ok else ('—' if contract_ok is None else 'FAIL')}")
     if report:
         print(f"  → {report}")
     for f in cfails:

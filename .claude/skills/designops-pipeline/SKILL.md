@@ -15,7 +15,7 @@ description: >
   it into concrete, contrast-checked tokens (the visual/taste layer) → aesthetic.json + brand.config.json.
   Step 4 builds a POC prototype from a ready-made component library + mock data, Step 4.6 runs a
   scored critique (6 weighted dimensions + Nielsen + anti-slop), Step 4.7 is a runnable audit gate
-  (audit_prototype.py: tokens + WCAG contrast in light/dark + no-emoji) before handoff.
+  (audit_prototype.py: tokens + WCAG contrast in light/dark + no-emoji + component contracts) before handoff.
   UX layers feed the pipeline: Step 2.3 (User Research → research.json: personas/JTBD/pains) and
   Step 2.4 (Competitive Analysis → competitive.json) supply evidence to Step 2.5; Step 4.8
   (Usability Test → usability.json: heuristic + automated + simulated persona walkthrough) runs on
@@ -880,9 +880,11 @@ Audit the prototype across 3 categories (see the severity matrix in the referenc
 |----------|---------------|------|
 | **A. Token Compliance** | `audit_prototype.py` → `lint_hardcodes.py`: no raw hex/px/ms or raw Tailwind palette (`bg-gray-500`) that should be a token | 🔴 = block (script) |
 | **B. A11y / WCAG** | `audit_prototype.py` recomputes contrast for the essential fg/bg pairs at `design_directives.a11y_target`, light + dark | 🔴 = block (script) |
-| **C. Component Quality** | Consistent naming · complete states (hover/focus/disabled/loading/error/empty) · no avoidable `any` | 🟡 = handoff note (agent) |
+| **C. Component Quality** | Consistent naming · complete states (hover/focus/disabled/loading/error/empty) · no avoidable `any`. **Component-usage contracts now partly machine-checked by gate 4** (see below) | gate 4 🔴 = block (script) · rest 🟡 = handoff note (agent) |
 
 > `audit_prototype.py` also runs a **UX-copy gate** (gate 3, via `references/ux-writing/scripts/check_no_emoji.py`): no emoji and no em/en-dash in product UI → 🔴 block. Full copy rules: `references/ux-writing/voice-tone.md`.
+
+> …and a **component-contract gate** (gate 4, via `scripts/lint_component_contracts.py`): enforces the Button/Dialog/Field usage contracts from `references/component-contracts.md` as runnable a11y checks — icon-only buttons need an accessible name, every `DialogContent`/`AlertDialogContent` needs a `DialogTitle`, every `Input` with an `id` needs a matching `FieldLabel htmlFor` → 🔴 block. Fuzzier rules (one-primary-per-view, missing `DialogDescription`, destructive-variant, `aria-invalid` on errored fields) print as **advisories** and never fail the gate. Escape a justified case with a `ds-allow-contract` comment.
 
 > **a11y target** comes from `intelligence.json` → `design_directives.a11y_target` (Step 2.5 already enforced the floor + public-sector ⇒ AAA invariant). Pass it straight to `--a11y` (the script maps `AA_plus`→AAA).
 

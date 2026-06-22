@@ -73,7 +73,7 @@ Build the DS `components/ui` set the screens actually use, as Figma component-se
 
 | Component | Variant axes |
 |-----------|--------------|
-| Button | `variant` = primary / secondary / outline / destructive · `size` = sm / md / lg · `state` = default / hover / disabled |
+| Button | `variant` = default / secondary / outline / ghost / destructive / link · `size` = sm / default / lg / icon · `state` = default / hover / focus / disabled / loading |
 | Input | `state` = default / focus / **error** |
 | Card | (base) |
 | Avatar | `size` (+ fallback) |
@@ -84,7 +84,9 @@ Build the DS `components/ui` set the screens actually use, as Figma component-se
 Rules: every fill/stroke/radius/gap/padding/fontSize **bound to a Theme/library variable**
 (no raw values); cap any variant matrix > 30 (split or use INSTANCE_SWAP for icons); name variants
 `Prop=Value, …`. The **Input `error` variant** (destructive border + error text) is reused by Flow
-error-state nodes.
+error-state nodes. **Variant/state vocab, anatomy slots, and token mapping come from
+[`../component-contracts.md`](../component-contracts.md); prop names/values mirror the code props
+(Code-Connect-ready) — `variant=default`, not `primary`.**
 
 ---
 

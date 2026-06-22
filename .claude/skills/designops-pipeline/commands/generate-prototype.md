@@ -203,6 +203,11 @@ Map each flow to a nav item: `{ title: flow.name, url: "/[slug]", icon: [lucide 
 > **Read `../references/poc-patterns.md` first** — it has ready-made: `KPICard`, `StatusBadge`,
 > `POCDataTable` (+pagination), `EmptyState`, `ErrorState`, Skeleton + mock data patterns.
 > Assemble from these instead of writing empty screens → presentable immediately.
+>
+> **Also read `../references/component-contracts.md`** — the usage contracts for Button / Dialog /
+> Field & Input (variant per job, a11y wiring, token mapping). Build to the 🔴 rules up front
+> (icon buttons need `aria-label`, `DialogContent` needs `DialogTitle`, `Input` needs a
+> `FieldLabel htmlFor`) so the Step 4.7 **gate 4** passes on the first audit.
 
 **Mock data rule:** realistic to the domain (real names, real IDs/record numbers, real document numbers) · never "User 1"/"Lorem ipsum"
 
@@ -362,6 +367,7 @@ Run through every generated file and verify:
 | A. Token Compliance | `audit_prototype.py`→`lint_hardcodes.py`: no raw hex/px/ms or `bg-gray-500`-style palette | 🔴 block (script) |
 | B. A11y / WCAG `[AA\|AAA]` | `audit_prototype.py` contrast on essential fg/bg pairs, light + dark | 🔴 block (script) |
 | C. Component Quality | naming · complete states · no avoidable `any` | 🟡 note (agent) |
+| D. Component contracts | `audit_prototype.py`→`lint_component_contracts.py`: icon-button name · `DialogTitle` · `Input`↔`FieldLabel` (`component-contracts.md`) | 🔴 block (script) |
 
 - a11y target from `aesthetic.json`/`intelligence.json` `design_directives.a11y_target` (AAA for public-sector)
 - The script writes `output/prototype/docs/audit-report.md`

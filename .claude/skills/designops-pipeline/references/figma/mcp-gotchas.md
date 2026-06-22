@@ -1,6 +1,6 @@
 # Step 5 · Figma MCP — gotchas (learned the hard way)
 
-Pitfalls hit while building the SplitMate file. Read before running any recipe.
+Pitfalls hit while building a real file end-to-end. Read before running any recipe.
 
 ## Setup
 - Load skills **`figma-use` + `figma-generate-library`** before `use_figma`. The MCP tools are

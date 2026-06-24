@@ -30,6 +30,12 @@ IDENTITY = [
     "primary", "primary-foreground", "secondary", "secondary-foreground",
     "muted", "muted-foreground", "accent", "accent-foreground", "border",
 ]
+# extended semantics — checked ONLY when the theme commits them (Phase 3). A theme that adds
+# warning/info/success then leaves them out of globals.css is the same silent no-op as a missing
+# identity token, so verify them too; absent from the theme → skipped (back-compat).
+EXTENDED = [
+    "warning", "warning-foreground", "info", "info-foreground", "success", "success-foreground",
+]
 TOL = 8  # per-channel sRGB tolerance — absorbs oklch↔hex rounding, not a neutral regression
 
 
@@ -105,8 +111,8 @@ def check(css_path, theme_path):
         if not have:
             errors.append(f"globals.css has no '{mode}' token block but the theme commits {mode} colors")
             continue
-        for tok in IDENTITY:
-            if tok not in want:
+        for tok in IDENTITY + EXTENDED:
+            if tok not in want:   # EXTENDED tokens skip unless the theme committed them
                 continue
             target = want[tok]
             # normalise BOTH sides through the same oklch→hex math the audit uses, so an

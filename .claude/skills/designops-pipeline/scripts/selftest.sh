@@ -302,6 +302,15 @@ python3 "$SCRIPTS_DIR/audit_prototype.py" "$PF" --a11y AA >/dev/null 2>&1 && ok 
 # regress --primary to a neutral gray (still high contrast) — only fidelity should catch it
 faithful_css; python3 -c "import re,io;p='$PF/app/globals.css';s=open(p).read().replace('--primary: oklch(0.45 0.2 264)','--primary: oklch(0.3 0 0)').replace('--accent: oklch(0.9 0.05 264)','--accent: oklch(0.92 0 0)');open(p,'w').write(s)"
 python3 "$SCRIPTS_DIR/audit_prototype.py" "$PF" --a11y AA >/dev/null 2>&1 && bad "neutral regression should block on fidelity" || ok "primary/accent regressed to neutral → exit 1 (BLOCKED by gate 6)"
+# gate 6 extended (Phase 3): a committed semantic token (warning) missing from globals.css must block
+faithful_css
+SEMTHEME="$TMP/sem_theme.json"
+python3 -c "import json;d=json.load(open('$PF/brand.config.json'));d['colors']['light']['warning']='#f5a623';d['colors']['light']['warning-foreground']='#0d0d0d';json.dump(d,open('$SEMTHEME','w'))"
+python3 "$SCRIPTS_DIR/lint_theme_fidelity.py" "$PF/app/globals.css" "$SEMTHEME" >/dev/null 2>&1 && bad "committed warning missing from globals should block" || ok "extended semantic committed but not applied → blocked (gate 6)"
+# add the token to globals → passes again
+python3 -c "p='$PF/app/globals.css';s=open(p).read().replace('--border: oklch(0.9 0 0);','--border: oklch(0.9 0 0); --warning: #f5a623; --warning-foreground: #0d0d0d;');open(p,'w').write(s)"
+python3 "$SCRIPTS_DIR/lint_theme_fidelity.py" "$PF/app/globals.css" "$SEMTHEME" >/dev/null 2>&1 && ok "extended semantic applied → exit 0" || bad "applied semantic token wrongly blocked"
+faithful_css
 # gate 7 — directive fidelity: build must honor safeguard_level / guidance_level
 GD="$TMP/protoG"; mkdir -p "$GD/app/users"
 printf '{"design_directives":{"safeguard_level":"strict","guidance_level":"guided","density_target":2,"navigation_model":"single"}}' > "$GD/intelligence.json"

@@ -1,6 +1,8 @@
 # /generate-prototype
 
-Generate a Next.js POC prototype from `design-first-draft.md` using `shadcn-skills-design-starter`.
+Generate a Next.js POC prototype from `design-first-draft.md` by **importing** the published
+`@npsin-oreo/design-system` (looloo) package — components come from `@npsin-oreo/design-system/<name>`
+(immutable, in `node_modules`); only the product's own `cn` lives at `@/lib/utils`.
 
 **Usage:**
 ```
@@ -121,17 +123,24 @@ If not found → continue with neutral theme defaults, log:
 
 ### 1a. Prepare prototype base
 
-Use the setup script with `--ds-auto` (graceful Model A default):
+This pipeline is a **consumer** of `@npsin-oreo/design-system` (Model A) — it imports the published
+package, never copies it. The setup needs a `GITHUB_TOKEN` (GitHub Packages requires auth even for
+public packages):
 
 ```bash
-bash .claude/skills/designops-pipeline/scripts/setup-prototype.sh --out ./output --ds-auto
+export GITHUB_TOKEN=$(gh auth token)
+bash .claude/skills/designops-pipeline/scripts/setup-prototype.sh --out ./output
+# optional: --ds-pkg @npsin-oreo/design-system@0.2.0 (pin) · --ds-registry "" (public-npm/tarball)
 ```
 
-- **`--ds-auto`**: imports the published `@npsin-oreo/design-system` package when `GITHUB_TOKEN` is set (`export GITHUB_TOKEN=$(gh auth token)`), else falls back to the in-repo `./design-system` (rsync, offline). Force with `--ds-import` (package) or omit the flag (rsync copy).
-- The rsync path copies the in-repo vendored DS, installs fast (`npm ci --prefer-offline`), and **reuses** a matching `node_modules` so repeat runs are ~instant — standalone/offline.
-- First install is the one-time cost; later runs reuse `node_modules` when the lockfile matches.
+- Installs the **pinned** DS package into `node_modules` (`--save-exact`), scaffolds a buildable Next
+  app that imports from it, writes `.npmrc` (scope → GitHub Packages), and creates `lib/utils.ts`
+  (`cn`, which the package does not export).
+- **Hard-requires `GITHUB_TOKEN`** — no token, no fallback (this is not standalone). Missing → the
+  script errors with the export command to run.
+- The DS in `node_modules` is **immutable**: customise via brand-scoped `[data-slot=*]` rules +
+  token overrides in `globals.css` (Step 2.6 theme), never by editing components.
 - Keeps a **real** `node_modules` (never a symlink — a shared/symlinked one breaks tsc's `@types/react` resolution).
-- No `./design-system`? Fallback: `git clone https://github.com/npsin-oreo/shadcn-skills-design-starter.git output/prototype && cd output/prototype && npm ci`.
 
 ### 1b. Apply brand overrides (if brand.config.json exists)
 
@@ -241,7 +250,7 @@ app/
 
 `(dashboard)/layout.tsx` template:
 ```tsx
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@npsin-oreo/design-system/sidebar"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -342,9 +351,9 @@ app/(dashboard)/[screen]/page.tsx     ← Server Component — layout only
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Field, FieldLabel, FieldError } from "@/components/ui/field"
+import { Button } from "@npsin-oreo/design-system/button"
+import { Input } from "@npsin-oreo/design-system/input"
+import { Field, FieldLabel, FieldError } from "@npsin-oreo/design-system/field"
 
 export function [ScreenName]Form() {
   const [loading, setLoading] = useState(false)

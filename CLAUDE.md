@@ -1,29 +1,36 @@
 # CLAUDE.md
 # Place this file at the root of any project that uses the designops-pipeline skill
 
-## Environment — self-contained
+## Environment — Model A (imports the looloo design system)
 
-This project is **standalone** — the core pipeline (TOR → brief → draft → prototype) depends on no external repo.
+This pipeline is a **consumer** of `@npsin-oreo/design-system` (the looloo design system). It does
+**not** vendor a DS — the build **imports the published package** into `output/prototype/node_modules`
+and imports components from `@npsin-oreo/design-system/<name>` (immutable; theme via Step 2.6 token +
+`[data-slot=*]` overrides, never by editing components). **Not standalone — needs a `GITHUB_TOKEN`**
+(GitHub Packages requires auth even for public packages).
 
 | Path | Role | When used |
 |------|------|-----------|
-| `./design-system/` | **DS (vendored, in-repo)** — shadcn-skills-design-starter source-only (~2MB, 52 components, no node_modules) | Step 3 (`--ds` default) + base for the POC prototype |
+| `@npsin-oreo/design-system` (npm, GitHub Packages) | **DS — imported package**, pinned + `--save-exact` | Step 4 build (`setup-prototype.sh`) |
+| `../looloo-design-system` (sibling checkout) | **DS source** — read for component inventory + `token-contract.json` + DESIGN.md only | Step 2.6 / 3.5 (`--ds`) |
 
-> The standalone DS is being split into an imported package `@npsin-oreo/design-system` (Model A).
 > Theming is owned by Step 2.6 → `brand.config.json` → the product scaffold. The old `--handoff`
-> Step 4.5 token-bridge (pushing tokens into a whitelabel repo) is **deprecated** and not part of
-> this flow.
+> Step 4.5 token-bridge (pushing tokens into a whitelabel repo) is **deprecated** and not part of this flow.
 
-`run_pipeline.sh` auto-resolves `--ds` in this order: `TOR_DS_PATH` env → `./design-system` (in-repo) → `../shadcn-skills-design-starter` (fallback)
+`run_pipeline.sh` resolves `--ds` (the looloo SOURCE, for inventory): `TOR_DS_PATH` env → `../looloo-design-system` sibling.
 
 ```bash
-# Core pipeline — standalone, no --ds needed (uses ./design-system automatically)
+export GITHUB_TOKEN=$(gh auth token)   # required — import the DS package from GitHub Packages
+
+# Core pipeline (DS inventory from the looloo source; build imports the package)
 bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
   --tor docs/tor.pdf \
+  --ds  ../looloo-design-system \
   --out ./output
 ```
 
-> Note: `./design-system` is source-only — when building the actual prototype, the pipeline copies it to `output/prototype/` and runs `npm install` once there.
+> Note: the DS is never copied. `setup-prototype.sh --out ./output` installs the pinned package into
+> `output/prototype/node_modules`, scaffolds an importing Next app + `.npmrc`, and a local `lib/utils.ts` (`cn`).
 
 ---
 

@@ -7,7 +7,7 @@ with accessibility and design quality checked automatically along the way.**
 
 Powered by Claude Code · Next.js 16 · shadcn/ui · Tailwind v4
 
-`Standalone` · `Offline-ready` · `WCAG-gated` · `138-brand aesthetic library` · `8-gate audit` · `89/89 selftest`
+`Model A (imports @npsin-oreo/design-system)` · `WCAG-gated` · `138-brand aesthetic library` · `11-gate audit` · `127/127 selftest`
 
 </div>
 
@@ -73,7 +73,7 @@ runs. It works for any kind of product — there are no fixed industry templates
 | 🧵 **Intent makes it to the build** | A traceability spine carries the contractual scope end-to-end: every **Must** feature and scored must-have is provably served by a task, a screen, and a built route — checked, not assumed. |
 | 🔁 **Scored quality loop** | Step 4.6 critique = 6 weighted dimensions + Nielsen's 10 heuristics + an anti-slop gate (Banned Defaults). |
 | 🧩 **19 design skills, folded in** | ux-writing, brandkit (DTCG tokens), image-to-code, migrate-design-system, performance, governance — vendored, standalone. See [`references/SKILLS.md`](.claude/skills/designops-pipeline/references/SKILLS.md). |
-| 📦 **Standalone** | The whole pipeline depends on no external repo — design system, brand library, and token kit are all vendored in. |
+| 📦 **Model A (imports the DS)** | The build **imports** `@npsin-oreo/design-system` (looloo) from GitHub Packages — never vendored. Needs `GITHUB_TOKEN`. The brand library + token kit ship with the skill. |
 
 ---
 
@@ -81,9 +81,10 @@ runs. It works for any kind of product — there are no fixed industry templates
 
 ```bash
 # 1. Place your TOR at docs/tor.pdf  (or try the bundled sample — see below)
+export GITHUB_TOKEN=$(gh auth token)   # required — import the DS package from GitHub Packages
 
-# 2. Run the full pipeline (standalone — no --ds needed)
-bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh --tor docs/tor.pdf --out ./output
+# 2. Run the full pipeline (DS inventory from the looloo source sibling)
+bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh --tor docs/tor.pdf --ds ../looloo-design-system --out ./output
 
 # 3. Generate the prototype from the draft (inside Claude Code)
 /generate-prototype --all

@@ -24,7 +24,8 @@
 #
 # Env vars:
 #   TOR_OUTPUT_DIR    — output directory (default: ./tor-output)
-#   TOR_DS_PATH       — design system path override (default: ../shadcn-skills-design-starter)
+#   TOR_DS_PATH       — looloo design-system SOURCE checkout for inventory/token-contract/DESIGN.md
+#                       (default: ../looloo-design-system). The BUILD imports the published package.
 #   TOR_HANDOFF_PATH  — (deprecated) whitelabel repo path for the legacy token-bridge
 #   TOR_BRAND_NAME    — brand name for the legacy bridge's brand.config.json (default: poc-brand)
 
@@ -34,19 +35,14 @@ set -euo pipefail
 TOR_FILE=""
 TOR_TEXT=""
 DS_PATH=""
-# Auto-resolve shadcn-skills-design-starter as default DS
-# Lookup order: env var → in-repo vendored DS → project-root sibling
+# Model A: --ds is the looloo design-system SOURCE checkout — read ONLY for the component inventory
+# (Step 3.5) + token-contract.json + DESIGN.md (Step 2.6). The BUILD imports the *published* package
+# (@npsin-oreo/design-system) via setup-prototype; the DS is never copied. Lookup: env → sibling checkout.
 _resolve_default_ds() {
-  # 1. env var override
   [[ -n "${TOR_DS_PATH:-}" ]] && { echo "$TOR_DS_PATH"; return; }
-  # 2. in-repo vendored DS (./design-system) — self-contained default
-  local project_root in_repo
+  local project_root sibling
   project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
-  in_repo="$project_root/design-system"
-  [[ -d "$in_repo" ]] && { echo "$in_repo"; return; }
-  # 3. project-root sibling (../shadcn-skills-design-starter) — fallback
-  local sibling
-  sibling="$(cd "$project_root" && cd .. && pwd)/shadcn-skills-design-starter"
+  sibling="$(cd "$project_root" && cd .. && pwd)/looloo-design-system"
   [[ -d "$sibling" ]] && { echo "$sibling"; return; }
   echo ""
 }
@@ -625,8 +621,9 @@ PROMPT
   fi
 
 else
-  log "--ds not provided → skipping Step 3.5 (screen inventory)"
-  log "Run later with: run_pipeline.sh --brief $BRIEF_JSON --ds <path> --out $OUT_DIR"
+  log "no looloo design-system source found → skipping Step 3.5 (screen inventory)"
+  log "Point --ds (or TOR_DS_PATH) at a looloo-design-system checkout, then re-run:"
+  log "  run_pipeline.sh --brief $BRIEF_JSON --ds ../looloo-design-system --out $OUT_DIR"
 fi
 
 # ── step 4.5 (DEPRECATED): token bridge → whitelabel repo ────────────────────

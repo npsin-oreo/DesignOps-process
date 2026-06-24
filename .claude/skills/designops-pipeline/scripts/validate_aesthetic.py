@@ -326,6 +326,13 @@ def validate(aesthetic_path, intel_path=None, contract_path=None):
             else:
                 # metadata / structural keys that are not themeable DS tokens
                 NON_TOKEN = {"project_name", "colors", "dark_mode", "signature"}
+                # additive semantic EXTENSIONS (Phase 3): warning/info/success map to NEW CSS vars
+                # (bg-warning, …) — they don't override a DS token, so a strict contract that predates
+                # them must still allow them. The build gates verify they're applied (theme fidelity
+                # gate 6 EXTENDED), and contrast is re-checked above.
+                EXTENSIONS = {"warning", "warning-foreground", "info", "info-foreground",
+                              "success", "success-foreground"}
+                allowed |= EXTENSIONS
                 pkg = contract.get("package", "the DS")
                 for src in ("tokens", "brand_config"):
                     node = d.get(src) or {}
@@ -334,8 +341,8 @@ def validate(aesthetic_path, intel_path=None, contract_path=None):
                     keys |= {k for k in node if k not in NON_TOKEN}        # flat scalars (radius, font_*)
                     for k in keys:
                         if k not in allowed:
-                            errors.append(f"{src}.{k!r} is not in {pkg}'s token contract — "
-                                          "2.6 may only theme tokens the design system exposes")
+                            errors.append(f"{src}.{k!r} is not in {pkg}'s token contract (nor an allowed "
+                                          "semantic extension) — 2.6 may only theme tokens the DS exposes")
     else:
         # No contract → brand_config keys are NOT verified against the DS. Every key here
         # becomes a `--key` CSS-var override in the prototype; a name the DS doesn't define

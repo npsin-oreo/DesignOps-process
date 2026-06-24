@@ -543,6 +543,35 @@ python3 "$LFF" "$PROTO10" "$TMP/bc10b.json" >/dev/null 2>&1 && ok "no font_sans 
 # audit wires gate 10 (fontfid= in summary)
 echo "$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO10" --theme "$TMP/bc10.json" 2>&1)" | grep -q "fontfid=" && ok "audit_prototype reports gate 10 (fontfid=)" || bad "gate 10 not wired into audit_prototype"
 
+# ── T19. validate_aesthetic — axes composition (coherence gate) ───────────────
+echo "[T19] validate_aesthetic — per-axis composition + coherence cap"
+VA="$SCRIPTS_DIR/validate_aesthetic.py"
+# builds $TMP/aesthetic.json (direction.name=linear-app) earlier; inject an axes block N ways.
+_axes() {  # $1 = python dict literal for d['axes'] ; $2 = primary_system
+  python3 -c "
+import json,sys
+d=json.load(open('$TMP/aesthetic.json'))
+d['primary_system']='$2'
+d['axes']=$1
+json.dump(d,open('$TMP/aes_axes.json','w'))"
+}
+R='"rationale":"fits"'
+# all six axes from the primary (linear-app) → coherent, exit 0
+_axes "{ax:{'source':'linear-app',$R} for ax in ['color','typography','shape','elevation','spacing','motion']}" "linear-app"
+python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "single-system axes (all linear-app) → exit 0" || bad "coherent single-system axes rejected"
+# one justified override from a 2nd real system (openai) → 2 systems, within cap, exit 0
+_axes "{**{ax:{'source':'linear-app',$R} for ax in ['color','shape','elevation','spacing','motion']}, 'typography':{'source':'openai',$R}}" "linear-app"
+python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "one justified override (2 systems) → exit 0" || bad "a justified 2-system composition should pass"
+# THREE systems → coherence cap blocks
+_axes "{**{ax:{'source':'linear-app',$R} for ax in ['color','shape','elevation','spacing']}, 'typography':{'source':'openai',$R}, 'motion':{'source':'clean',$R}}" "linear-app"
+OUT="$(python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "cap is 2" && ok "3 systems → coherence cap blocks" || bad "coherence cap not enforced"
+# override with no rationale → blocks
+_axes "{**{ax:{'source':'linear-app',$R} for ax in ['color','shape','elevation','spacing','motion']}, 'typography':{'source':'openai'}}" "linear-app"
+OUT="$(python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "must be justified" && ok "override without rationale → blocks" || bad "unjustified override not blocked"
+# color axis sourced from a non-palette system → blocks (palette comes from direction.name)
+_axes "{**{ax:{'source':'linear-app',$R} for ax in ['typography','shape','elevation','spacing','motion']}, 'color':{'source':'openai',$R}}" "linear-app"
+OUT="$(python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "axes.color.source" && ok "color axis must match direction.name → blocks" || bad "color/direction mismatch not blocked"
+
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"

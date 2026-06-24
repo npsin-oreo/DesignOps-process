@@ -36,6 +36,15 @@ REQUIRED_TOP_KEYS = ["meta", "brief_inference", "direction", "tokens", "contrast
 DIRECTION_TYPES = {"named_system", "archetype"}
 MOTION_DEPTH = {"none", "subtle", "expressive"}
 
+# ── decision axes (optional `axes` block) ──────────────────────────────────────
+# Each DESIGN.md carries far more than a palette. The `axes` block records which system each
+# facet was resolved from, so a build can be a coherent WHOLE — usually one primary system, with a
+# *justified* per-axis override from at most one secondary (free-mixing many systems is incoherent).
+# Mirrors the interop-protocol crosswalk (Color · Type · Spacing · Radius · Elevation · Motion).
+AXES = ("color", "typography", "shape", "elevation", "spacing", "motion")
+MAX_AXIS_SOURCES = 2          # coherence cap: a composition may span at most 2 design systems
+AXIS_NON_SYSTEM = {"intelligence"}  # a directive-derived axis source (e.g. spacing from data_density)
+
 # ── the identity token contract (what makes a theme not-"plain") ───────────────
 # These are the DS's own semantic color tokens. The bridge USED to carry only
 # primary/background/foreground → the prototype's card/secondary/muted/accent/border
@@ -153,6 +162,53 @@ def validate(aesthetic_path, intel_path=None, contract_path=None):
                             "library by mood/visual adjective (calm/clean/minimal/trust…), NOT by industry, "
                             "before falling back to an archetype; record the terms tried so the skip is a "
                             "decision, not a default (a close named_system keeps its DESIGN.md guidance).")
+
+    # ── axes (optional): per-facet composition, coherence-gated ───────────────────
+    # Resolve a system on more than just colour — record the source + rationale for each of the 6
+    # axes. Coherence is enforced: a composition spans ≤2 systems, the colour axis comes from the
+    # resolved palette (direction.name), and any override (axis sourced from a non-primary system)
+    # must be justified.
+    axes = d.get("axes")
+    if axes is not None:
+        if not isinstance(axes, dict):
+            errors.append("axes must be an object mapping each axis to {source, rationale}")
+        else:
+            primary = d.get("primary_system") or dir_.get("name")
+            if not primary:
+                errors.append("axes present but no primary_system (or direction.name) to anchor the composition")
+            sources = []
+            for ax in AXES:
+                node = axes.get(ax)
+                if not isinstance(node, dict):
+                    errors.append(f"axes.{ax} is required when axes is present — give it {{source, rationale}}")
+                    continue
+                src = node.get("source")
+                if not src:
+                    errors.append(f"axes.{ax}.source is required (which system this facet is resolved from)")
+                else:
+                    sources.append(src)
+                    # a named source must resolve in the library (a directive-derived source is exempt)
+                    if src not in AXIS_NON_SYSTEM and not (LIBRARY / src / "DESIGN.md").is_file():
+                        errors.append(f"axes.{ax}.source '{src}' is not a library system "
+                                      f"(no library/{src}/DESIGN.md) — or use 'intelligence' for a directive-derived axis")
+                    # an override (source != primary) must be justified
+                    if primary and src != primary and src not in AXIS_NON_SYSTEM and not node.get("rationale"):
+                        errors.append(f"axes.{ax} overrides the primary system with '{src}' but has no rationale "
+                                      "— a per-axis override must be justified (else use the primary for coherence)")
+                if not node.get("rationale"):
+                    warnings.append(f"axes.{ax}.rationale is empty — say why this source fits the axis")
+            # the colour axis must come from the resolved palette (direction.name)
+            col_src = (axes.get("color") or {}).get("source")
+            if col_src and dir_.get("name") and col_src != dir_.get("name"):
+                errors.append(f"axes.color.source '{col_src}' must equal direction.name '{dir_.get('name')}' "
+                              "— the palette is resolved from the chosen system; theme another system's colour "
+                              "and the contrast-checked tokens no longer match")
+            # coherence cap: at most MAX_AXIS_SOURCES distinct systems (excluding directive-derived)
+            distinct = {s for s in sources if s not in AXIS_NON_SYSTEM}
+            if len(distinct) > MAX_AXIS_SOURCES:
+                errors.append(f"axes span {len(distinct)} systems {sorted(distinct)} — cap is {MAX_AXIS_SOURCES} "
+                              "for coherence (one primary backbone + at most one justified override). "
+                              "Design languages are coherent wholes; mixing many produces a Frankenstein.")
 
     # ── tokens: the full identity color set (light + dark), not just primary ───────
     tok = d["tokens"]
@@ -315,6 +371,13 @@ def main():
     print(f"  Mood       : {bi.get('mood_adjective')} · motion={bi.get('motion_depth', '—')}"
           + (f" · signature={sig}" if sig else ""))
     print(f"  Identity   : {len(_light)} light tokens" + (f" + {len(_dark)} dark" if _dark else " (light only)"))
+    axes = d.get("axes")
+    if isinstance(axes, dict):
+        comp = " · ".join(f"{ax}={(axes.get(ax) or {}).get('source', '?')}" for ax in
+                          ("color", "typography", "shape", "elevation", "spacing", "motion") if ax in axes)
+        srcs = sorted({(axes.get(ax) or {}).get("source") for ax in axes} - {None})
+        print(f"  Axes       : {comp}")
+        print(f"  Composition: {len(srcs)} system(s) {srcs} (primary {d.get('primary_system') or dir_.get('name')})")
     print(f"  a11y target: {d.get('constraints', {}).get('a11y_target')} · "
           f"contrast pairs verified: {len(d.get('contrast_checks', []))}")
     for w in warnings:

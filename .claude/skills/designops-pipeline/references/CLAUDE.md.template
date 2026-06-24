@@ -43,25 +43,32 @@ bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh [flags]
 |------|-----------|---------|
 | `--tor <path>` | ไฟล์ TOR (PDF หรือ DOCX) | `--tor docs/tor.pdf` |
 | `--tor-text "<text>"` | ข้อความ TOR โดยตรง | `--tor-text "..."` |
-| `--ds <path>` | design system folder หรือ GitHub URL | `--ds ./design-system` |
+| `--ds <path>` | looloo design-system **source checkout** (อ่าน inventory/token-contract/DESIGN.md เท่านั้น; build import package) | `--ds ../looloo-design-system` |
 | `--brief <path>` | ใช้ brief.json ที่มีอยู่ข้าม step 1+2 | `--brief output/brief.json` |
 | `--out <dir>` | output directory (default: `./tor-output`) | `--out ./output` |
 
+> **Model A (import):** pipeline นี้เป็น *consumer* ของ `@npsin-oreo/design-system` — build จะ
+> **import package** ไม่ใช่ copy DS. ต้องมี `GITHUB_TOKEN` (`export GITHUB_TOKEN=$(gh auth token)`)
+> เพราะ GitHub Packages บังคับ auth. `--ds` ชี้ไป looloo source checkout เพื่ออ่าน component
+> inventory + token-contract เท่านั้น (ถ้าไม่ให้ → default `../looloo-design-system`).
+
 **Environment variable:**
 ```bash
-export TOR_OUTPUT_DIR=./output   # กำหนด default output dir
+export TOR_OUTPUT_DIR=./output       # กำหนด default output dir
+export GITHUB_TOKEN=$(gh auth token) # บังคับ — import DS package จาก GitHub Packages
+export TOR_DS_PATH=../looloo-design-system   # (optional) looloo source override
 ```
 
 ## Common commands
 
 ```bash
-# Full pipeline — อ่าน TOR + build draft จาก design system
+# Full pipeline — อ่าน TOR + build draft (DS inventory จาก looloo source)
 bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
   --tor docs/tor.pdf \
-  --ds  ./design-system \
+  --ds  ../looloo-design-system \
   --out ./output
 
-# Step 1+2 เท่านั้น — ยังไม่มี design system
+# Step 1+2 เท่านั้น — ยังไม่ต้องมี DS
 bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
   --tor docs/tor.pdf \
   --out ./output
@@ -69,7 +76,7 @@ bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
 # Step 3 เท่านั้น — มี brief.json อยู่แล้ว
 bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
   --brief ./output/brief.json \
-  --ds    ./design-system \
+  --ds    ../looloo-design-system \
   --out   ./output
 
 # Validate brief.json โดยไม่รัน pipeline
@@ -98,9 +105,11 @@ my-project/
 │               └── validate_brief.py
 ├── docs/
 │   └── tor.pdf                        ← TOR input
-├── design-system/                     ← DS repo (หรือ symlink)
-└── output/                            ← generated files
+└── output/                            ← generated files (DS imported into output/prototype/node_modules)
     ├── brief.md
     ├── brief.json
     └── design-first-draft.md
+
+# DS ไม่ได้อยู่ในโปรเจกต์ — import จาก @npsin-oreo/design-system (Model A)
+# looloo source checkout วางเป็น sibling: ../looloo-design-system (อ่าน inventory/token-contract)
 ```

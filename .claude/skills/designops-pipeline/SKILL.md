@@ -108,17 +108,17 @@ TOR (PDF / DOCX / Notion / GDocs)
 # Full pipeline — TOR → brief → draft → POC delivery
 bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh \
   --tor ./docs/tor.pdf \
-  --ds  ./design-system \
+  --ds ../looloo-design-system \
   --out ./output
 
 # Steps 1+2 only (no design system yet)
 bash run_pipeline.sh --tor ./docs/tor.pdf --out ./output
 
 # Step 3 only (brief.json already exists)
-bash run_pipeline.sh --brief ./output/brief.json --ds ./design-system --out ./output
+bash run_pipeline.sh --brief ./output/brief.json --ds ../looloo-design-system --out ./output
 
 # Step 4 only (design-first-draft.md + DS already exist)
-bash run_pipeline.sh --draft ./output/design-first-draft.md --ds ./design-system --out ./output
+bash run_pipeline.sh --draft ./output/design-first-draft.md --ds ../looloo-design-system --out ./output
 ```
 
 ### Execution model (how the script and the agent split work)
@@ -457,7 +457,7 @@ Gate: `validate_screens.py {OUTPUT_DIR}/screen-inventory.json {OUTPUT_DIR}/flows
 ### Design system input
 
 ```bash
---ds ./design-system/          # local folder
+--ds ../looloo-design-system/          # local folder
 --ds ~/projects/acme-ds/       # absolute path
 --ds https://github.com/org/ds # auto git clone → /tmp/ds-repo/
 ```
@@ -613,7 +613,7 @@ After generating, log:
 
 ## Step 4 — POC Delivery Package
 
-Takes `design-first-draft.md` → scaffolds a Next.js prototype using `shadcn-skills-design-starter` as the base
+Takes `design-first-draft.md` → scaffolds a Next.js prototype that **imports** `@npsin-oreo/design-system` as the base
 
 > Full reference: `references/shadcn-prototype.md`  
 > **POC component library + mock data patterns: `references/poc-patterns.md`** — read before generating screens
@@ -633,27 +633,31 @@ Instead of scaffolding empty screens, assemble from ready-made patterns so it's 
 **Mock data rule:** must be realistic to the domain — real names, real IDs/record numbers, real document numbers · **never** "User 1" / "Lorem ipsum"
 Drive density/safeguards/navigation/a11y from `intelligence.json` → `design_directives` (Step 2.5), not from a fixed preset.
 
-### Starter repo
+### Import the DS package (Model A)
 
-Use the setup script with `--ds-auto` (graceful Model A default):
+The build **imports** `@npsin-oreo/design-system` — it never copies a DS. `GITHUB_TOKEN` is required
+(GitHub Packages needs auth even for public packages):
 
 ```bash
-bash .claude/skills/designops-pipeline/scripts/setup-prototype.sh --out {OUTPUT_DIR} --ds-auto
+export GITHUB_TOKEN=$(gh auth token)
+bash .claude/skills/designops-pipeline/scripts/setup-prototype.sh --out {OUTPUT_DIR}
+# optional: --ds-pkg @npsin-oreo/design-system@0.2.0 (pin) · --ds-name · --ds-registry "" (public-npm/tarball)
 ```
 
-- **`--ds-auto`** prefers the published DS package `@npsin-oreo/design-system` (Model A — imported, never copied) **when `GITHUB_TOKEN` is set**, and **falls back to the in-repo `./design-system` (rsync, offline)** when the token is absent or the install fails — so it stays standalone/offline-capable.
-  - GitHub Packages requires auth even for public packages → `export GITHUB_TOKEN=$(gh auth token)` to enable import mode. Import mode writes a scaffold `.npmrc` (scope → GitHub Packages) + `transpilePackages` (the DS ships source `.tsx`).
-  - Force one mode: `--ds-import` (always package) or omit `--ds-auto` (always rsync copy).
-- ⚠️ **Fonts: load via `next/font` in `layout.tsx`, never a CSS `@import` in `globals.css`.** The DS `@import "…/styles.css"` is inlined first, so a font `@import` ends up after other rules and breaks the "`@import` must come first" rule — `next build` tolerates it but **Turbopack dev 500s on every route**. Use `next/font/google` (self-hosted; exposes a `--font-*` variable that `--font-sans` points at). The Step 4.7 audit **gate 5** (`lint_font_imports.py`) blocks a remote-font `@import`.
-- `npm ci --prefer-offline` + reuse-when-lockfile-matches → the rsync path installs once, repeats are ~instant.
+- Installs the **pinned** DS (`--save-exact`) into `node_modules`, writes a scaffold `.npmrc` (scope →
+  GitHub Packages) + `transpilePackages` (the DS ships source `.tsx`), an `@/*` tsconfig alias, and a
+  local `lib/utils.ts` (`cn`, which the package does not export). **No token → hard error, no fallback.**
+- **Components are immutable** (in `node_modules`): screens import from `@npsin-oreo/design-system/<name>`;
+  customise via Step 2.6 token + brand-scoped `[data-slot=*]` overrides in `globals.css`, never by editing.
+- ⚠️ **Fonts: load via `next/font` in `layout.tsx`, never a CSS `@import` in `globals.css`.** The DS `@import "@npsin-oreo/design-system/styles.css"` is inlined first, so a font `@import` ends up after other rules and breaks the "`@import` must come first" rule — `next build` tolerates it but **Turbopack dev 500s on every route**. Use `next/font/google` (self-hosted; exposes a `--font-*` variable that `--font-sans` points at). The Step 4.7 audit **gate 5** (`lint_font_imports.py`) blocks a remote-font `@import`.
 - Always a **real** `node_modules` (never symlinked — a symlinked one breaks tsc's `@types/react` resolution).
-- Fallback if `./design-system` is missing: `git clone https://github.com/npsin-oreo/shadcn-skills-design-starter.git {OUTPUT_DIR}/prototype && cd {OUTPUT_DIR}/prototype && npm ci`.
+- **Version contract:** the published package must track the component API the screens target. Pin it
+  (`--ds-pkg …@x.y.z`); a drift (e.g. a missing `AlertAction` export) breaks the build until the DS is
+  published to match. Read the DS inventory from a `../looloo-design-system` source checkout (`--ds`).
 
-The starter (`./design-system`) comes with:
-- Next.js 16 App Router · React 19 · Tailwind CSS v4
-- shadcn/ui (radix-nova) — 56 components fully built
-- 1,804 design tokens synced from Figma (neutral theme)
-- `CLAUDE.md` + `.claude/skills/shadcn-ui-design/` for Claude Code
+`@npsin-oreo/design-system` provides:
+- shadcn/ui (radix) — 57 components, exported as `@npsin-oreo/design-system/<name>` (+ `/theme-provider`, `/styles.css`, `/token-contract.json`)
+- the neutral-theme tokens (Step 2.6 overrides them) · Tailwind v4 wiring · Next.js 16 / React 19 peers
 
 ---
 
@@ -1010,7 +1014,7 @@ fails contrast — none of which the static gate can see.
 ## Step 4.8 — Storybook QA layer (optional)
 
 > Opt-in. Off by default (Storybook + Playwright + Vitest are heavy; default prototype builds stay fast).
-> Template + exact enable steps: `references/storybook/README.md`. Lives in the **built prototype** (`output/prototype/`), never in the vendored `design-system/`.
+> Template + exact enable steps: `references/storybook/README.md`. Lives in the **built prototype** (`output/prototype/`), never in the imported `@npsin-oreo/design-system` package.
 
 Adds a component explorer + **`@storybook/addon-a11y`** (axe-core on every rendered story — a runtime
 a11y pass that complements the static `audit_prototype.py` gate) + a light/dark toggle. Enable it when

@@ -390,20 +390,25 @@ python3 "$SCRIPTS_DIR/validate_usability.py" "$TMP/usability.json" >/dev/null 2>
 python3 -c "import json;d=json.load(open('$TMP/usability.json'));d['meta']['not_real_user_testing']=False;json.dump(d,open('$TMP/usability_bad.json','w'))"
 python3 "$SCRIPTS_DIR/validate_usability.py" "$TMP/usability_bad.json" >/dev/null 2>&1 && bad "fake real test should fail" || ok "not_real_user_testing must be true → exit 1 (BLOCKED)"
 
-# ── T13. setup-prototype DS resolution (Model A import + graceful default) ────
-echo "[T13] setup-prototype — --ds-auto graceful default (import ↔ rsync)"
+# ── T13. setup-prototype — Model A import-only (no vendored/rsync path) ────────
+echo "[T13] setup-prototype — import-only (no copy/rsync, token hard-required)"
 SETUP="$SCRIPTS_DIR/setup-prototype.sh"
 bash -n "$SETUP" 2>/dev/null && ok "setup-prototype.sh parses (bash -n)" || bad "setup-prototype.sh syntax error"
-grep -q -- '--ds-auto)' "$SETUP" && grep -q -- '--ds-import)' "$SETUP" && ok "--ds-auto + --ds-import flags parsed" || bad "DS-mode flags missing"
-grep -q 'GITHUB_TOKEN' "$SETUP" && grep -q 'trying import mode' "$SETUP" && ok "auto: token-gated import decision present" || bad "graceful import decision missing"
+# import is the ONLY mode — the vendored/copy flags + rsync path must be GONE
+grep -q -- '--ds-auto' "$SETUP" || grep -q 'rsync' "$SETUP" && bad "vendored/rsync path still present (should be import-only)" || ok "no --ds-auto / rsync path (import-only)"
 grep -q '_authToken' "$SETUP" && grep -q 'DS_REGISTRY' "$SETUP" && ok "scaffold .npmrc (scope → registry) wired" || bad "scaffold .npmrc wiring missing"
-grep -q 'falling back to offline rsync' "$SETUP" && ok "import-failure → rsync fallback (graceful)" || bad "rsync fallback branch missing"
-# default scope must be the published package
-grep -q '@npsin-oreo/design-system' "$SETUP" && ok "default import pkg = @npsin-oreo/design-system" || bad "default import pkg wrong/missing"
-# security: default version pinned (no floating 'latest') + exact install
-grep -qE 'IMPORT_PKG="@npsin-oreo/design-system@\$\{DS_VERSION\}"' "$SETUP" && ok "default DS version is pinned (no floating latest)" || bad "default DS version not pinned"
-grep -q -- '--save-exact' "$SETUP" && ok "DS installed with --save-exact (reproducible lockfile)" || bad "--save-exact missing"
+# token is HARD-required (no fallback)
+grep -q 'GITHUB_TOKEN is required' "$SETUP" && grep -q 'NEEDS_TOKEN' "$SETUP" && ok "GITHUB_TOKEN hard-required (no fallback)" || bad "token requirement not enforced"
+# default pkg pinned to a published version + exact install
+grep -qE 'DS_VERSION="[0-9]' "$SETUP" && grep -qE 'IMPORT_PKG="@npsin-oreo/design-system@\$\{DS_VERSION\}"' "$SETUP" && ok "default import pkg pinned (no floating latest)" || bad "default DS version not pinned"
+grep -q -- '--save-exact' "$SETUP" && ok "DS installed with --save-exact (reproducible)" || bad "--save-exact missing"
+# scaffold owns cn (package doesn't export it) + the @/* path alias
+grep -q 'lib/utils.ts' "$SETUP" && grep -q 'twMerge' "$SETUP" && ok "scaffolds local cn (lib/utils.ts)" || bad "cn scaffold missing"
+grep -q '"@/\*": \["./\*"\]' "$SETUP" && ok "scaffold tsconfig has @/* path alias" || bad "@/* path alias missing"
 grep -q 'dependency confusion' "$SETUP" && ok "dependency-confusion note on scope→registry binding" || bad "dependency-confusion guard note missing"
+# behaviour: no token → errors with the export hint (no silent fallback)
+OUT="$( (unset GITHUB_TOKEN; bash "$SETUP" --out "$TMP/spA" 2>&1) )"; rm -rf "$TMP/spA"
+echo "$OUT" | grep -q 'GITHUB_TOKEN is required' && ok "no token → hard error (not fallback)" || bad "missing token should hard-error"
 
 # ── T14. Step 5 Figma output spec + figma_prep ────────────────────────────────
 echo "[T14] Step 5 Figma — spec/recipes present + figma_prep runs"

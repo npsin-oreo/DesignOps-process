@@ -7,7 +7,7 @@ with accessibility and design quality checked automatically along the way.**
 
 Powered by Claude Code · Next.js 16 · shadcn/ui · Tailwind v4
 
-`Standalone` · `Offline-ready` · `WCAG-gated` · `138-brand aesthetic library` · `8-gate audit` · `89/89 selftest`
+`Model A (imports @npsin-oreo/design-system)` · `WCAG-gated` · `138-brand aesthetic library` · `11-gate audit` · `127/127 selftest`
 
 </div>
 
@@ -72,8 +72,8 @@ runs. It works for any kind of product — there are no fixed industry templates
 | 🛡️ **Real gates, not vibes** | Every stage has a zero-dependency validator. The audit gate is a *script* with **8 checks** — hardcodes · WCAG contrast (light + dark) · UX copy · component-contracts · font-imports · theme-fidelity · directive-fidelity · screen-coverage — exit 1 blocks handoff. |
 | 🧵 **Intent makes it to the build** | A traceability spine carries the contractual scope end-to-end: every **Must** feature and scored must-have is provably served by a task, a screen, and a built route — checked, not assumed. |
 | 🔁 **Scored quality loop** | Step 4.6 critique = 6 weighted dimensions + Nielsen's 10 heuristics + an anti-slop gate (Banned Defaults). |
-| 🧩 **19 design skills, folded in** | ux-writing, brandkit (DTCG tokens), image-to-code, migrate-design-system, performance, governance — vendored, standalone. See [`references/SKILLS.md`](.claude/skills/designops-pipeline/references/SKILLS.md). |
-| 📦 **Standalone** | The whole pipeline depends on no external repo — design system, brand library, and token kit are all vendored in. |
+| 🧩 **19 design skills, folded in** | ux-writing, brandkit (DTCG tokens), image-to-code, migrate-design-system, performance, governance — vendored into the skill. See [`references/SKILLS.md`](.claude/skills/designops-pipeline/references/SKILLS.md). |
+| 📦 **Model A (imports the DS)** | The build **imports** `@npsin-oreo/design-system` (looloo) from GitHub Packages — never vendored. Needs `GITHUB_TOKEN`. The brand library + token kit ship with the skill. |
 
 ---
 
@@ -81,9 +81,10 @@ runs. It works for any kind of product — there are no fixed industry templates
 
 ```bash
 # 1. Place your TOR at docs/tor.pdf  (or try the bundled sample — see below)
+export GITHUB_TOKEN=$(gh auth token)   # required — import the DS package from GitHub Packages
 
-# 2. Run the full pipeline (standalone — no --ds needed)
-bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh --tor docs/tor.pdf --out ./output
+# 2. Run the full pipeline (DS inventory from the looloo source sibling)
+bash .claude/skills/designops-pipeline/scripts/run_pipeline.sh --tor docs/tor.pdf --ds ../looloo-design-system --out ./output
 
 # 3. Generate the prototype from the draft (inside Claude Code)
 /generate-prototype --all
@@ -235,7 +236,7 @@ Full map: [`references/SKILLS.md`](.claude/skills/designops-pipeline/references/
 |------|---------|
 | `--tor <path>` | TOR file (PDF / DOCX / MD / TXT) |
 | `--tor-text "<text>"` | TOR text directly |
-| `--ds <path>` | Design system folder or GitHub URL (default: `./design-system`) |
+| `--ds <path>` | looloo design-system **source** checkout, read for inventory/token-contract only (default: `../looloo-design-system`) |
 | `--brief <path>` | Reuse an existing `brief.json`, skipping steps 1+2 |
 | `--out <dir>` | Output directory (default: `./tor-output`) |
 | `--handoff <path>` · `--brand <name>` | (optional) token bridge → a separate handoff repo |
@@ -261,9 +262,9 @@ Designops-project-test/
 │   ├── scripts/
 │   │   ├── run_pipeline.sh               #    runner — chains every step
 │   │   ├── validate_{brief,intelligence,flows,screens,aesthetic}.py
-│   │   ├── audit_prototype.py            #    Step 4.7 gate (5: token·WCAG·copy·contracts·font)
-│   │   ├── lint_{hardcodes,component_contracts,font_imports}.py
-│   │   └── selftest.sh                   #    89/89 regression guard
+│   │   ├── audit_prototype.py            #    Step 4.7 gate (11: token·WCAG·copy·contracts·font·theme·directive·screen·edge·fontfid·axis)
+│   │   ├── lint_{hardcodes,component_contracts,font_imports,theme_fidelity,…}.py
+│   │   └── selftest.sh                   #    127/127 regression guard
 │   └── references/
 │       ├── aesthetics/                   #    🎨 138-brand library + taste + contrast.py
 │       ├── tokens/                       #    DTCG token foundation + validators (brandkit)
@@ -274,7 +275,7 @@ Designops-project-test/
 │       ├── image-to-code.md · brandkit.md · migrate-design-system.md
 │       ├── performance.md · governance.md · mobile-usability.md · SKILLS.md
 │       └── sample-tor.md
-├── design-system/                        # 🎨 vendored DS (shadcn, 52 components, ~2MB)
+│                                          # DS is imported (@npsin-oreo/design-system) — not in-repo
 ├── docs/tor.pdf                          # 📄 drop your TOR here
 ├── output/                               # 📤 generated artifacts (auto-created)
 └── CLAUDE.md                             # project context for Claude Code
@@ -303,41 +304,45 @@ Designops-project-test/
 |-------------|-----------|-------|
 | **Claude Code** | reading the TOR + generating every artifact | **Required.** Without it the runner only stages prompts and produces no output. |
 | **Python ≥ 3.9** | every validator + audit gate + DS inventory scan | **Stdlib only — no `pip install`.** (3.9+ for `list[str]` typing.) |
-| **Node.js ≥ 18** | building the prototype (`npm install && npm run dev`) | The vendored DS is **source-only** — the *first* prototype build runs `npm install` (needs network once); later builds reuse `node_modules` offline. |
+| **Node.js ≥ 18** | building the prototype (`npm install && npm run dev`) | The build **imports** `@npsin-oreo/design-system` into `output/prototype/node_modules` (needs network + `GITHUB_TOKEN`). |
+| **`GITHUB_TOKEN`** | installing the DS package from GitHub Packages | **Required** for the build — `export GITHUB_TOKEN=$(gh auth token)`. Public packages still need auth on GitHub Packages. |
 | **poppler** (`pdftotext`) | better PDF text extraction | Optional — falls back to Claude reading the PDF. `brew install poppler`. |
 | Playwright · Lighthouse · Figma MCP | Steps 4.7b / performance / 5 | Optional — these steps **skip cleanly** when the tool is absent. |
 
-**Cloning this repo to use elsewhere?** It is designed to run **standalone and offline** by default:
-no absolute paths, the design system is vendored in-repo, and the validators are pure stdlib. Two
-things to know:
+**Cloning this repo to use elsewhere?** The pipeline is a **consumer of `@npsin-oreo/design-system`**
+(Model A) — the build imports the package, it is not standalone. Two things to know:
 
-- **Don't pass `--ds-import`.** That flag pulls the private `@npsin-oreo/design-system` package; you
-  won't have access. The default (and `--ds-auto`) use the in-repo `./design-system` via rsync, which
-  is what you want.
-- A few doc links point at the author's hosted **Storybook** (`npsin-oreo.github.io`). The same
-  contracts are vendored locally in `references/component-variants.generated.md`, so nothing breaks.
+- **You need access to `@npsin-oreo/design-system` on GitHub Packages** + a `GITHUB_TOKEN`
+  (`export GITHUB_TOKEN=$(gh auth token)`). The validators + the pipeline orchestration are pure
+  stdlib / bash, but the *build* (`setup-prototype.sh`) installs the DS package.
+- Point `--ds` (or `TOR_DS_PATH`) at a **looloo-design-system source checkout** — it is read only for
+  the component inventory + `token-contract.json` + DESIGN.md (Steps 2.6 / 3.5); the build still
+  imports the published package.
 
 ---
 
 ## 🧪 Tests
 
 ```bash
-bash .claude/skills/designops-pipeline/scripts/selftest.sh        # 89/89, runs on macOS stock bash 3.2
+bash .claude/skills/designops-pipeline/scripts/selftest.sh        # 127/127, runs on macOS stock bash 3.2
 ```
 
-Covers bash-3.2 compatibility, every validator (valid passes / invalid fails), the full 8-gate audit
+Covers bash-3.2 compatibility, every validator (valid passes / invalid fails), the full 11-gate audit
 (fake brand, low contrast, hardcode, emoji, neutral-theme regression, missing safeguard, unbuilt Must
-screen all blocked), feature/scoring traceability, and the DTCG token gates.
+screen, unhandled edge case, un-applied font/axis all blocked), feature/scoring traceability, the
+import-only setup, and the DTCG token gates.
 **Run it after editing any script** in `.claude/skills/designops-pipeline/scripts/`.
 
 ---
 
-## 🧱 Standalone design
+## 🧱 Model A — consumes the looloo design system
 
-The core pipeline depends on **no external repo**. The design system is vendored at
-`./design-system/` (source-only, used for Step 3 *and* as the prototype base); the brand library
-and DTCG token kit live under `references/`. `run_pipeline.sh` resolves `--ds` in order:
-`TOR_DS_PATH` env → `./design-system` (in-repo) → `../shadcn-skills-design-starter` (fallback).
+The build **imports** `@npsin-oreo/design-system` (looloo) from GitHub Packages — the DS is never
+vendored or copied. Components are immutable (`@npsin-oreo/design-system/<name>` in `node_modules`);
+customise via Step 2.6 token + `[data-slot=*]` overrides, never by editing them. The brand library +
+DTCG token kit still ship under `references/`. `run_pipeline.sh` resolves `--ds` (the looloo SOURCE,
+read only for inventory/token-contract): `TOR_DS_PATH` env → `../looloo-design-system` sibling.
+Requires `GITHUB_TOKEN` (`export GITHUB_TOKEN=$(gh auth token)`).
 
 The `--handoff` token bridge (hex → oklch into a whitelabel repo) is **deprecated**. Under Model A
 the DS is the imported `@npsin-oreo/design-system` package and theming is owned by Step 2.6 → the product
@@ -348,9 +353,9 @@ against a repo that still ships `brand.config.json` + `npm run brand:build` (nev
 
 ## 📜 License
 
-Pipeline code in this repo is **MIT** — see [`LICENSE`](LICENSE). To stay standalone it **vendors**
-third-party material (shadcn/ui, the shadcn-skills-design-starter design system + skills, the
-runtime-audit from ux-ui-agent-skills), each under its own upstream license — see [`NOTICE`](NOTICE)
+Pipeline code in this repo is **MIT** — see [`LICENSE`](LICENSE). It **vendors** some third-party
+material (shadcn/ui patterns + skills, the brand library, the runtime-audit from ux-ui-agent-skills),
+each under its own upstream license — see [`NOTICE`](NOTICE)
 for attributions. Verify the upstream terms before redistributing.
 
 ---

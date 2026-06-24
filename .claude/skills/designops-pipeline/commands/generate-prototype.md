@@ -100,6 +100,21 @@ If not found → continue with neutral theme defaults, log:
 `font_sans` at the top level, no `colors`) is still accepted — it just themes only those keys
 (the old narrow behaviour). Prefer the `colors` form. All fields are optional.
 
+**Apply the whole theme, not just colours** — the bridge has three parts; all three are now gated:
+1. **Colours** → `globals.css` `:root` + `.dark` identity tokens (gate 6 theme fidelity).
+2. **`font_sans`** → load the primary family via `next/font` in `app/layout.tsx` and wire
+   `--font-sans` (+ a Thai/script fallback in the body stack when the family is Latin-only).
+   A committed font that never reaches `layout`/`globals.css` is a silent no-op — **gate 10
+   (font fidelity) blocks it.**
+3. **`signature`** (advisory, express via Tailwind utilities — not a hard gate):
+
+   | signature | utility convention |
+   |-----------|--------------------|
+   | `elevation` `flat`/`soft`/`layered` | `ring-1` only / `+ shadow-sm` / `+ shadow-md` (brand-scope `[data-slot="card"]` in globals.css; don't edit the shared component) |
+   | `type_weight` `regular`/`medium`/`semibold` | heading/`CardTitle` font weight |
+   | `tracking` `tighter`…`wide` | `tracking-*` on display text |
+   | `border_style` `solid`/`translucent`/`none` | solid `border-border` / `border-*/10` / borderless + elevation |
+
 ---
 
 ## Step 1 — Prepare prototype base

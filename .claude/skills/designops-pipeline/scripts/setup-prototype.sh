@@ -106,8 +106,29 @@ if [ ! -f "$CSS" ] || ! grep -q "@source.*$DS_NAME" "$CSS" 2>/dev/null; then
   cat > "$CSS" <<CSS
 @import "$DS_NAME/styles.css";
 @source "../node_modules/$DS_NAME/components";   /* gotcha #1 — else components render unstyled */
+@source not "../public";   /* gotcha #2 — Tailwind v4 auto-source-detection reads binaries (webp/png) here as text and emits garbage classes → Turbopack/Lightning CSS 500s */
+@source not "../.next";    /* gotcha #3 — next/image writes optimized binaries to .next/cache/images at runtime; with a nested git root .gitignore is not consulted, so exclude explicitly */
 CSS
-  log "wrote Tailwind wiring → $CSS (@import styles + @source components)"
+  log "wrote Tailwind wiring → $CSS (@import styles + @source components, excludes public/.next)"
+fi
+
+# .gitignore — a clean, committable Next app AND (when the prototype is its own git root)
+# the authority Tailwind v4 reads to skip .next/node_modules during source detection.
+GI="$PROTO/.gitignore"
+if [ ! -f "$GI" ]; then
+  cat > "$GI" <<'GITIGNORE'
+/node_modules
+/.next/
+/out/
+/build
+.DS_Store
+*.pem
+npm-debug.log*
+.env*
+*.tsbuildinfo
+next-env.d.ts
+GITIGNORE
+  log "wrote .gitignore → $GI"
 fi
 
 # ── .npmrc so npm can fetch a scoped DS from GitHub Packages (auth required) ────

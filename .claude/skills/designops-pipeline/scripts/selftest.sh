@@ -415,6 +415,11 @@ grep -q -- '--save-exact' "$SETUP" && ok "DS installed with --save-exact (reprod
 grep -q 'lib/utils.ts' "$SETUP" && grep -q 'twMerge' "$SETUP" && ok "scaffolds local cn (lib/utils.ts)" || bad "cn scaffold missing"
 grep -q '"@/\*": \["./\*"\]' "$SETUP" && ok "scaffold tsconfig has @/* path alias" || bad "@/* path alias missing"
 grep -q 'dependency confusion' "$SETUP" && ok "dependency-confusion note on scope→registry binding" || bad "dependency-confusion guard note missing"
+# Tailwind v4 auto-source-detection must NOT scan binary dirs (webp/png in public, next/image
+# cache in .next) — else it emits garbage classes and Turbopack/Lightning CSS 500s on every route.
+grep -q '@source not "../public"' "$SETUP" && ok "globals.css excludes public/ from Tailwind scan (gotcha #2)" || bad "missing @source not ../public (binary scan trap)"
+grep -q '@source not "../.next"' "$SETUP" && ok "globals.css excludes .next/ from Tailwind scan (gotcha #3)" || bad "missing @source not ../.next (next/image cache binary scan trap)"
+grep -q '\.gitignore' "$SETUP" && grep -qE '/\.next/' "$SETUP" && ok "scaffold writes a Next .gitignore (node_modules/.next/out)" || bad "scaffold .gitignore missing"
 # behaviour: no token → errors with the export hint (no silent fallback)
 OUT="$( (unset GITHUB_TOKEN; bash "$SETUP" --out "$TMP/spA" 2>&1) )"; rm -rf "$TMP/spA"
 echo "$OUT" | grep -q 'GITHUB_TOKEN is required' && ok "no token → hard error (not fallback)" || bad "missing token should hard-error"

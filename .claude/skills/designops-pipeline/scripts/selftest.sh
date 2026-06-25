@@ -659,6 +659,19 @@ OUT="$(python3 "$LAF" "$TMP/axes_nopill.css" "$TMP/axes_aes.json" 2>&1)"; echo "
 # no axes block → graceful skip (exit 0)
 echo '{"meta":{}}' > "$TMP/axes_none.json"
 python3 "$LAF" "$TMP/axes_ok.css" "$TMP/axes_none.json" >/dev/null 2>&1 && ok "no axes block → graceful skip" || bad "no-axes should skip, not block"
+# C0 — axes applied via a LOCAL @import (DS-native brand.css) must be followed (gate 11 import-aware)
+cat > "$TMP/brand-axes.css" <<'CSS'
+@theme { --text-base--line-height: 1.65; }
+h1, h2, h3 { font-weight: 600; }
+[data-slot="badge"] { @apply rounded-full; }
+:root { --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1); }
+[data-slot="button"] { transition-timing-function: var(--ease-out-soft); }
+CSS
+printf '@import "@npsin-oreo/design-system/styles.css";\n@import "./brand-axes.css";\n' > "$TMP/axes_import.css"
+python3 "$LAF" "$TMP/axes_import.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && ok "axes applied via @import ./brand.css → gate 11 follows it (PASS)" || bad "gate 11 should resolve a local @import for axes"
+# package @import only (DS base, no local axes) → still blocked (no leak)
+printf '@import "@npsin-oreo/design-system/styles.css";\n' > "$TMP/axes_pkgonly.css"
+python3 "$LAF" "$TMP/axes_pkgonly.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && bad "package @import must not satisfy axes" || ok "package @import not followed → axes still blocked (gate 11)"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

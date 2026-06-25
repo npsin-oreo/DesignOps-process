@@ -25,6 +25,10 @@ import re
 import sys
 from pathlib import Path
 
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from audit_prototype import _read_css_with_imports  # follow a local @import "./brand.css" (same as gate 2/6)
+
 
 def _num(v):
     return str(v).rstrip("0").rstrip(".") if isinstance(v, float) else str(v)
@@ -43,7 +47,7 @@ def check(css_path, aes_path):
     axes = aes.get("axes")
     if not isinstance(axes, dict):
         return [], ["no axes block in aesthetic.json — nothing to verify"]
-    css = css_path.read_text(errors="ignore")
+    css = _read_css_with_imports(css_path)   # axes may live in a DS-native @import "./brand.css"
     low = css.lower()
     checked = 0
 

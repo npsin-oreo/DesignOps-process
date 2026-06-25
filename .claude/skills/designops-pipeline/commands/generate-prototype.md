@@ -176,6 +176,26 @@ shadow, rely on `border`); `border_style:translucent`→ prefer `border` over he
 `type_weight`→ heading weight (`font-medium`/`font-semibold`); `tracking`→ heading tracking
 (`tracking-tight`…). Read `signature` from `brand.config.json` or `output/aesthetic.json`.
 
+> **DS-native alternative (multi-product, recommended once you have many products).** Instead of
+> hand-writing the `:root`/`.dark` colours, generate them: `npx ds-brand-build ./brand.config.json
+> ./app/brand.css` then `@import "./brand.css"` in `globals.css` (after the DS styles import). The DS
+> stays the single source of token *names*; each product owns one `brand.config.json`. Gate 6 + gate 2
+> **follow a local `@import "./brand.css"`** (inline, cascade-preserving), so this verifies correctly.
+> The themer expects the nested shape `{ name, radius, light:{…}, dark:{…} }`; map Step 2.6's
+> `colors.{light,dark}` into top-level `light`/`dark` if needed.
+
+**Tokenize the non-colour axes too — no magic numbers.** Express the `axes` Step 2.6 committed
+(line-height, tracking, motion easing, container width) as **named tokens**, then apply them — don't
+bury raw values in rules:
+- typography line-height → re-point the Tailwind ramp token `@theme { --text-base--line-height: <n>; }`
+  and `body { line-height: var(--text-base--line-height); }` (gate 11 needs the literal at
+  `--text-*--line-height`, so keep it there, not behind a var).
+- tracking / easing / container → product tokens in `:root` (`--tracking-display`, `--ease-brand`,
+  `--container-max`), applied via `[data-slot=*]` rules + utilities. Heading weight stays a literal
+  `font-weight: 400` (gate 11 reads the applied weight; a var would hide it).
+- This keeps the build free of anonymous numbers and makes the axes traceable/themeable, while gate 1
+  (no raw px/hex) and gate 11 (axes applied) both stay green.
+
 **B — legacy flat form (no `colors`).** Back-compat: change only the keys present (`--primary`,
 `--radius`, …) inside `:root`, leave the rest at defaults.
 

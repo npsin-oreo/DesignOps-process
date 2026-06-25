@@ -1,6 +1,9 @@
 # Aesthetics — the "taste" layer (Step 2.6)
 
-Vendored from `shadcn-skills-design-starter` so the pipeline stays **standalone**.
+Vendored from `shadcn-skills-design-starter` — these are **local reference files** (the 138
+design-system specs, taste guides, and scripts). Note: only this reference content is vendored;
+under **Model A** the design system itself is **imported** as `@npsin-oreo/design-system`, not
+vendored — so the pipeline is **not standalone** (it needs a `GITHUB_TOKEN`).
 
 `design_directives` (Step 2.5) decides the *functional* shape — density, a11y, navigation,
 safeguards. It says nothing about how the product should **look**. Step 2.6 fills that gap:

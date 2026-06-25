@@ -1,7 +1,9 @@
 # Folded design skills — capability index
 
-All 19 design skills from `shadcn-skills-design-starter` are now folded into this pipeline,
-vendored so it stays standalone. Most were already wired (aesthetic, audit, critique, tokens);
+All 19 design skills from `shadcn-skills-design-starter` are now folded into this pipeline as
+vendored reference content. (Under **Model A** the design system itself is imported as
+`@npsin-oreo/design-system`, not vendored — so the pipeline is **not standalone**.)
+Most were already wired (aesthetic, audit, critique, tokens);
 this index covers the 6 that were added last and where each plugs in.
 
 | Skill | Plugs into | Reference | Gate / verify |

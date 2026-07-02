@@ -7,7 +7,7 @@ with accessibility and design quality checked automatically along the way.**
 
 Powered by Claude Code · Next.js 16 · shadcn/ui · Tailwind v4
 
-`Model A (imports @npsin-oreo/design-system)` · `WCAG-gated` · `138-brand aesthetic library` · `11-gate audit` · `142/142 selftest`
+`Model A (imports @npsin-oreo/design-system)` · `WCAG-gated` · `138-brand aesthetic library` · `10-gate audit (renders + looks)` · `169/169 selftest` · `CI on every PR`
 
 </div>
 
@@ -50,12 +50,16 @@ runs. It works for any kind of product — there are no fixed industry templates
          ▼  3.5   screens from flows (full coverage)          screen-inventory.json    →  validate_screens.py
          │          + human draft                                + design-first-draft.md
          │
-         ▼  4     scaffold Next.js prototype                  output/prototype/
+         ▼  3.7   edge cases per Must screen (UI Stack × CORRECT)  edge-cases.json      →  validate_edgecases.py
          │
-         ▼  4.6   scored critique (6 dims + Nielsen + anti-slop) → auto-fix
-         ▼  4.7   audit GATE — audit_prototype.py              docs/audit-report.md     🔴 exit 1 = blocked
-         │          tokens · WCAG contrast (light+dark) · no-emoji
-         ▼  4.7b  runtime audit (optional) — axe · states · focus-trap · taste   (Playwright)
+         ▼  4     scaffold Next.js prototype (grid + control-parity from screen 1)   output/prototype/
+         │
+         ▼  4.6   scored critique (7 dims incl. richness + Nielsen + anti-slop) → auto-fix
+         ▼  4.7   audit GATE — audit_prototype.py (10 gates)   docs/audit-report.md     🔴 exit 1 = blocked
+         │          tokens · WCAG (light+dark) · copy · contracts · fonts
+         │          · fidelity family (theme+font+axes) · directive · screens · edges
+         ▼  4.7b  runtime audit (optional) — renders + LOOKS: axe · states · structure
+         │          (control-parity/phone-lock) · richness (anti-plain) · focus-trap · taste   (Playwright)
          ▼  4.8   Storybook QA (optional, opt-in)
          │
          ▼  5     Figma output — 5 pages, generated from artifacts   figma_prep.py + Figma MCP
@@ -69,9 +73,10 @@ runs. It works for any kind of product — there are no fixed industry templates
 |---|---|
 | 🧠 **Product Intelligence** | Infers 10 measurable dimensions (each with evidence + confidence) → an open `design_directives` object. No fixed industry presets. |
 | 🎨 **Aesthetic Direction** | Picks one of **138 named design systems** (apple, linear, stripe, resend…) or an archetype, then resolves the **full identity token set** (surfaces, text, accent, border + dark theme — not just primary), **contrast-checked**, so the look actually flows into the prototype. Optionally infers it from a TOR mockup. |
-| 🛡️ **Real gates, not vibes** | Every stage has a zero-dependency validator. The audit gate is a *script* with **11 checks** — hardcodes · WCAG contrast (light + dark) · UX copy · component-contracts · font-imports · theme-fidelity · directive-fidelity · screen-coverage · edge-coverage · font-fidelity · axis-fidelity — exit 1 blocks handoff. `finalize-prototype.sh` chains it (`--strict`) with the critique + usability integrity checks so the audit can't be skipped. |
-| 🧵 **Intent makes it to the build** | A traceability spine carries the contractual scope end-to-end: every **Must** feature and scored must-have is provably served by a task, a screen, and a built route — checked, not assumed. |
-| 🔁 **Scored quality loop** | Step 4.6 critique = 6 weighted dimensions + Nielsen's 10 heuristics + an anti-slop gate (Banned Defaults). |
+| 🛡️ **Real gates, not vibes** | Every stage has a zero-dependency validator. The audit gate is a *script* with **10 gates** — hardcodes · WCAG contrast (light + dark) · UX copy · component-contracts · font-imports · a **fidelity family** (theme + font + non-colour axes all applied) · directive-fidelity · screen-coverage · edge-coverage · **render structure** — exit 1 blocks handoff. `finalize-prototype.sh` chains it (`--strict`) with the critique + usability integrity checks so the audit can't be skipped. |
+| 👁️ **It renders, then looks** | The one runtime gate (Playwright) renders each screen at mobile + desktop and catches what source can't: a 32px select next to a 48px input, a phone-locked desktop column, a flat greyscale skeleton — the failures that passed every *static* gate on a real dogfood. Degrades cleanly without a browser. |
+| 🧵 **Intent makes it to the build** | A traceability spine carries the contractual scope end-to-end: every **Must** feature and scored must-have is provably served by a task, a screen, and a built route — plus a per-role **device dimension** (desktop/mobile/both) so a build can't quietly go mobile-only. Checked, not assumed. |
+| 🔁 **Scored quality loop** | Step 4.6 critique = **7 weighted dimensions** (incl. **richness/identity**, scored from the render) + Nielsen's 10 heuristics + an anti-slop gate (Banned Defaults) — a flat "brand colour on a neutral skeleton" can't score high just because its tokens exist. |
 | 🧩 **19 design skills, folded in** | ux-writing, brandkit (DTCG tokens), image-to-code, migrate-design-system, performance, governance — vendored into the skill. See [`references/SKILLS.md`](.claude/skills/designops-pipeline/references/SKILLS.md). |
 | 📦 **Model A (imports the DS)** | The build **imports** `@npsin-oreo/design-system` (looloo) from GitHub Packages — never vendored. Needs `GITHUB_TOKEN`. The brand library + token kit ship with the skill. |
 
@@ -111,14 +116,15 @@ cd output/prototype && npm install && npm run dev   # → http://localhost:3000
 | Step | What it does | Output | Gate |
 |------|--------------|--------|------|
 | **1+2** | Read TOR → 8 categories + scoring criteria | `brief.md` · `brief.json` | `validate_brief.py` |
-| **2.5** | Product Intelligence — 10 dims → `design_directives` (+ feature traceability) | `intelligence.json` | `validate_intelligence.py` |
-| **2.6** | Aesthetic Direction — resolve the full identity theme | `aesthetic.json` · `brand.config.json` | `validate_aesthetic.py` |
+| **2.5** | Product Intelligence — 10 dims → `design_directives` (+ feature traceability + per-role **device**) | `intelligence.json` | `validate_intelligence.py` |
+| **2.6** | Aesthetic Direction — full identity theme + **layout axis** + **usage** directives | `aesthetic.json` · `brand.config.json` | `validate_aesthetic.py` |
 | **3** | Refine user flows from directives | `flows.json` | `validate_flows.py` |
 | **3.5** | Screens from flows + DS mapping (+ feature/scoring coverage) | `screen-inventory.json` · `design-first-draft.md` | `validate_screens.py` |
-| **4** | Scaffold the Next.js prototype | `output/prototype/` | — |
-| **4.6** | Scored critique → auto-fix critical + quick wins | `docs/critique.md` | (agent) |
 | **3.7** | Edge-Case Analysis (UI Stack × CORRECT) per Must screen | `edge-cases.json` | `validate_edgecases.py` |
-| **4.7** | **Audit gate** — 11 checks (token · WCAG · copy · contracts · font · theme · directive · screens · edges · font-fidelity · axis) · `finalize-prototype.sh` chains it `--strict` + critique + usability | `docs/audit-report.md` | `audit_prototype.py` 🔴 exit 1 |
+| **4** | Scaffold the Next.js prototype (grid + control-parity from screen 1) | `output/prototype/` | — |
+| **4.6** | Scored critique (7 dims, richness from render) → auto-fix critical + quick wins | `docs/critique.md` · `critique.json` | `validate_critique.py` |
+| **4.7** | **Audit gate** — 10 gates (token · WCAG · copy · contracts · font-import · fidelity family · directive · screens · edges · render) · `finalize-prototype.sh` chains it `--strict` + critique + usability | `docs/audit-report.md` | `audit_prototype.py` 🔴 exit 1 |
+| **4.7b** | Runtime audit (opt-in) — renders + looks: axe · states · **structure** · **richness** · focus-trap | — | Playwright |
 | **4.8** | Storybook QA (opt-in) | — | `addon-a11y` axe pass |
 | **5** | Figma output (5 pages: Cover/Foundations/Components/Screens/Flows) — generated from artifacts | Figma file | `figma_prep.py` + Figma MCP |
 
@@ -130,12 +136,17 @@ Between the brief and the UI, the pipeline infers **10 measurable product dimens
 **evidence + confidence** — and rolls them up into an open **`design_directives`** object. Any
 domain is expressible as a vector; there are no fixed presets.
 
-`User Types · Expertise · Goals · Core Tasks · Workflow Complexity · Data Density · Error Tolerance · Accessibility · Compliance · Decision Criticality`
+`User Types (+ primary_device) · Expertise · Goals · Core Tasks · Workflow Complexity · Data Density · Error Tolerance · Accessibility · Compliance · Decision Criticality`
 
 ```
 design_directives = { density_target 1–5, guidance_level, safeguard_level,
-                      a11y_target, mandatory_flows[], navigation_model, trust_emphasis }
+                      a11y_target, mandatory_flows[], navigation_model, trust_emphasis,
+                      responsive: { target: desktop|mobile|both, desktop_roles[], mobile_roles[] } }
 ```
+
+Each `user_type` declares a **`primary_device`** (desktop/mobile/both) that rolls up into
+`responsive` — so a split desk/frontline audience becomes a directive the build (and the render
+phone-lock gate) honour, instead of a silent mobile-only column.
 
 `validate_intelligence.py` enforces **cross-dimension invariants** (e.g. `safety_critical ⇒
 error_tolerance low/zero`, public-sector ⇒ AAA) and **confidence gating** (low confidence →
@@ -157,12 +168,19 @@ instead of the neutral shadcn default ("design slop").
 - **Full identity, not just a primary** — it resolves the whole semantic set (surfaces, text
   hierarchy, accent, border) for **light *and* dark**, so the chosen system's character actually
   lands instead of a brand colour slapped on a neutral skeleton.
+- **Layout axis** — a `layout` axis (grid columns 4/8/12, gutter, container widths, control-height
+  scale, touch target) so structure is a *token* the scaffold applies from screen 1, not an ad-hoc
+  per-screen guess. Verified in the build by the fidelity family (axis sub).
+- **Usage directives** — a `usage` block says *how* to apply the identity richly (tinted surfaces,
+  elevation tiers, where the accent lands, a hero moment, empty states with content), so the render
+  anti-plain check + the critique richness dimension have something to enforce.
 - **Gate** — `validate_aesthetic.py` **recomputes WCAG contrast from the hex values itself**
   (never trusts the agent), requires the chosen system to resolve in the library, demands the full
-  light+dark identity set, and forces `a11y_target`/`density_target` to echo `design_directives`.
+  light+dark identity set, checks the layout invariants (touch ≤ control height, grid non-decreasing),
+  and forces `a11y_target`/`density_target` to echo `design_directives`.
 
 Output `aesthetic.json` + a ready-to-apply `output/brand.config.json` (carrying the whole theme) for
-`/generate-prototype` — and audit **gate 6** blocks if the build regresses to neutral.
+`/generate-prototype` — and the audit **fidelity family (gate 6)** blocks if the build regresses to neutral.
 
 **Beyond colour — themeable axes + DS-native theming.** `@npsin-oreo/design-system@0.3.0` exposes
 **`axis_tokens`** in its contract — non-colour design axes (`ease · duration · leading · tracking ·
@@ -171,7 +189,7 @@ colour, from one config. The multi-product path: `brand.config.json` → `npx ds
 `app/brand.css` → `@import "./brand.css"` in `globals.css`. The DS root stays the single source of
 token **names** (`token-contract.json`: colour + scalar + axis); each product is one config. The
 token tiers are **primitive → semantic → component** (Tailwind's `@theme`/`--color-*` is the
-*utility-binding* layer, not a tier). Gates 2 / 6 / 11 follow the local `@import`, so this verifies
+*utility-binding* layer, not a tier). Gates 2 and 6 follow the local `@import`, so this verifies
 end-to-end without losing any check.
 
 ---
@@ -180,7 +198,8 @@ end-to-end without losing any check.
 
 **Step 4.6 — Critique (scored)** · [`critique-framework.md`](.claude/skills/designops-pipeline/references/critique-framework.md) → [`design-review.md`](.claude/skills/designops-pipeline/references/design-review.md)
 
-- Score **6 weighted dimensions** (Hierarchy 20 · Consistency 20 · Accessibility 20 · Usability 20 · Responsiveness 10 · Performance 10) → weighted overall (≤6 = rework).
+- Score **7 weighted dimensions** (Hierarchy 20 · Consistency 15 · Accessibility 20 · Usability 15 · Responsiveness 10 · Performance 10 · **Richness/identity 10**) → weighted overall (≤6 = rework). **Richness is scored from the render** (via `capture_screens.mjs` screenshots + the anti-plain report), so a flat neutral skeleton can't score high on tokens alone.
+- **Separate judge pass** (pass/fail) — `judge_verdict:false` caps the overall at 2.0; looks never rescue a broken core task. `validate_critique.py` enforces the cap.
 - Flag **Nielsen's 10 heuristics** by number · run the **anti-slop gate** (Banned Defaults: pure #000/#fff, identical cards, rainbow accents, emoji-as-icons, em-dash copy…).
 - **Mobile lens** ([`mobile-usability.md`](.claude/skills/designops-pipeline/references/mobile-usability.md)) for mobile-first products — touch targets ≥44px, thumb reach, correct input types, 320px reflow, no hover-only. Also applied when screens are generated (Step 3.5).
 - Auto-fix every 🔴 Critical + ⚡ Quick Win; log the rest for Dev.
@@ -197,19 +216,20 @@ python3 .claude/skills/designops-pipeline/scripts/audit_prototype.py \
 | 1 | **Token compliance** | `lint_hardcodes.py` — no raw hex/px/ms or `bg-gray-500`-style palette | 🔴 block |
 | 2 | **WCAG contrast** | recomputes ratios from `globals.css` (oklch→sRGB), light **and** dark, at the a11y target | 🔴 block |
 | 3 | **UX copy** | no emoji / em-dash in product UI | 🔴 block |
-| 4 | **Component contracts** | `lint_component_contracts.py` — icon-only buttons need a name, every `DialogContent` a `DialogTitle`, labelled `Input` a matching `FieldLabel htmlFor` | 🔴 block |
+| 4 | **Component contracts** | `lint_component_contracts.py` — icon-only buttons need a name, every `DialogContent` a `DialogTitle`, labelled `Input` a matching `FieldLabel htmlFor`; plus **DS gotchas** (`component-notes.json`: a height utility on `<NativeSelect>` no-ops → block; a disabled modal trigger → advisory) | 🔴 block |
 | 5 | **Font imports** | `lint_font_imports.py` — no remote-font CSS `@import` (500s the Turbopack dev server; use `next/font`) | 🔴 block |
-| 6 | **Theme fidelity** | `lint_theme_fidelity.py` — the identity theme Step 2.6 committed in `brand.config.json` is actually applied in `globals.css` (no regression to the neutral default) | 🔴 block |
+| 6 | **Fidelity family** | did the committed Step 2.6 direction get applied? ONE gate, three sub-checks: **theme colours** (`lint_theme_fidelity.py` — no regression to neutral) · **font** (`lint_font_fidelity.py` — committed `font_sans` reaches the build) · **non-colour axes** (`lint_axis_fidelity.py` — type/shape/motion + layout tokens land in `@theme`). Blocks if any sub fails. | 🔴 block |
 | 7 | **Directive fidelity** | `lint_directive_fidelity.py` — the build honors `design_directives`: destructive actions guarded when `safeguard_level` is on, an empty-state when `guidance_level` is guided (density/nav advisory) | 🔴 block |
 | 8 | **Screen coverage** | `lint_screen_coverage.py` — every **Must** screen in `screen-inventory.json` was built as an `app/<route>/page.tsx` rendering its declared loading/empty/error states | 🔴 block |
 | 9 | **Edge-case coverage** | `lint_edge_coverage.py` — every **Must** edge in `edge-cases.json` is handled in its screen (empty/error/loading/partial state · inline validation · destructive confirm) | 🔴 block |
-| 10 | **Font fidelity** | `lint_font_fidelity.py` — the committed `font_sans` actually reaches `layout`/`globals.css` (not the scaffold default) | 🔴 block |
-| 11 | **Axis fidelity** | `lint_axis_fidelity.py` — the non-colour axes (type leading/weight, pill shape, motion easing) committed in `aesthetic.json` are applied in the CSS | 🔴 block |
+| 10 | **Render structure** *(optional)* | `verify_structure.mjs` (Playwright) — renders at mobile+desktop for control-height parity, surface consistency, and phone-lock. **Always evaluated outside `--strict`**: a skip never blocks, only a real render failure does. Needs a build + Playwright. | 🔴 block (when it runs) |
 
-> Gates 6-11 auto-discover their source artifact (`brand.config.json` / `intelligence.json` /
-> `screen-inventory.json` / `edge-cases.json` / `aesthetic.json`) beside the prototype, or take
-> `--theme` / `--intel` / `--screens` / `--edges` / `--aesthetic`, and skip cleanly when absent.
-> Gates 2 / 6 / 11 also follow a local `@import "./brand.css"` (DS-native theming — see below).
+> Gates 6-9 auto-discover their source artifact (`brand.config.json` / `aesthetic.json` /
+> `intelligence.json` / `screen-inventory.json` / `edge-cases.json`) beside the prototype, or take
+> `--theme` / `--aesthetic` / `--intel` / `--screens` / `--edges`, and skip cleanly when absent.
+> Gates 2 and 6 also follow a local `@import "./brand.css"` (DS-native theming — see below).
+> Gate 10 (render) is **render-optional** — it never blocks a machine without Playwright, even under
+> `--strict` — and auto-derives `--desktop-role` from `intelligence.json`'s `responsive` target.
 >
 > **`finalize-prototype.sh` is the enforcement seam:** it always runs the audit (`--strict` on a
 > complete build, so a skipped artifact-backed gate counts as a failure) plus the critique +
@@ -224,7 +244,10 @@ python3 .claude/skills/designops-pipeline/scripts/audit_prototype.py \
 
 Renders the built page in headless Chrome (Playwright) to catch what source can't show — **axe-core**
 (button/link names, image alt, `lang`, ARIA, landmarks, heading order), **hover/focus-state contrast**,
-modal **focus-trap**, plus a render-based **anti-slop** report. Opt-in; skips cleanly without Playwright.
+**structure** (control-height parity, surface consistency, phone-lock — this is what surfaces into audit
+gate 10), **richness** (anti-plain: flat cards, no identity colour, no elevation, blank empty states),
+modal **focus-trap**, plus a render-based **anti-slop** report. `capture_screens.mjs` writes the
+mobile+desktop PNG set the Step 4.6 critique scores richness from. Opt-in; skips cleanly without Playwright.
 ```bash
 node scripts/runtime/audit_runtime.mjs out/index.html   # after npm run build, in the prototype
 ```
@@ -281,21 +304,26 @@ Designops-project-test/
 │   ├── commands/generate-prototype.md
 │   ├── scripts/
 │   │   ├── run_pipeline.sh               #    runner — chains every step
-│   │   ├── validate_{brief,intelligence,flows,screens,aesthetic}.py
-│   │   ├── audit_prototype.py            #    Step 4.7 gate (11: token·WCAG·copy·contracts·font·theme·directive·screen·edge·fontfid·axis)
-│   │   ├── lint_{hardcodes,component_contracts,font_imports,theme_fidelity,…}.py
-│   │   └── selftest.sh                   #    142/142 regression guard
+│   │   ├── validate_{brief,intelligence,flows,screens,aesthetic,critique,edgecases}.py
+│   │   ├── audit_prototype.py            #    Step 4.7 gate (10: token·WCAG·copy·contracts·font·fidelity-family·directive·screen·edge·render)
+│   │   ├── lint_{hardcodes,component_contracts,font_imports,theme/font/axis_fidelity,…}.py
+│   │   ├── setup-prototype.sh            #    scaffolds Grid/Col/Stack + control-parity + @theme layout tokens
+│   │   └── selftest.sh                   #    169/169 regression guard (CI runs it on every PR)
 │   └── references/
 │       ├── aesthetics/                   #    🎨 138-brand library + taste + contrast.py
+│       ├── runtime-audit/                #    Playwright gates: structure · richness · axe · capture_screens
 │       ├── tokens/                       #    DTCG token foundation + validators (brandkit)
 │       ├── ux-writing/                   #    voice-tone + check_no_emoji.py
 │       ├── storybook/                    #    opt-in QA template (Step 4.8)
+│       ├── component-notes.json          #    DS gotchas fed to gate 4 (NativeSelect, disabled trigger)
+│       ├── proposals/first-draft-quality.md  #  the A–J plan (structure + richness), fully implemented
 │       ├── design-review.md · critique-framework.md · audit-checklist.md
 │       ├── intelligence-layer.md · poc-patterns.md · shadcn-prototype.md
 │       ├── image-to-code.md · brandkit.md · migrate-design-system.md
 │       ├── performance.md · governance.md · mobile-usability.md · SKILLS.md
 │       └── sample-tor.md
 │                                          # DS is imported (@npsin-oreo/design-system) — not in-repo
+├── .github/workflows/selftest.yml        # 🤖 CI — runs selftest on every PR
 ├── docs/tor.pdf                          # 📄 drop your TOR here
 ├── output/                               # 📤 generated artifacts (auto-created)
 └── CLAUDE.md                             # project context for Claude Code
@@ -312,8 +340,9 @@ Designops-project-test/
 | `aesthetic.json` · `brand.config.json` | AI (visual direction) · theme | 2.6 |
 | `flows.json` | AI (refined flows) | 3 |
 | `screen-inventory.json` · `design-first-draft.md` | AI (build manifest) · Designer | 3.5 |
+| `edge-cases.json` | AI (non-happy-path contract) | 3.7 |
 | `prototype/` | Dev (Next.js app) | 4 |
-| `prototype/docs/critique.md` · `audit-report.md` | Designer/Dev · QA/Lead | 4.6 / 4.7 |
+| `prototype/docs/critique.md` · `critique.json` · `audit-report.md` | Designer/Dev · gate · QA/Lead | 4.6 / 4.7 |
 | `prototype/docs/poc-handoff.md` | Dev handoff | 6 |
 
 ---
@@ -344,14 +373,20 @@ Designops-project-test/
 ## 🧪 Tests
 
 ```bash
-bash .claude/skills/designops-pipeline/scripts/selftest.sh        # 142/142, runs on macOS stock bash 3.2
+bash .claude/skills/designops-pipeline/scripts/selftest.sh        # 169/169, runs on macOS stock bash 3.2
 ```
 
-Covers bash-3.2 compatibility, every validator (valid passes / invalid fails), the full 11-gate audit
+Covers bash-3.2 compatibility, every validator (valid passes / invalid fails), the full 10-gate audit
 (fake brand, low contrast, hardcode, emoji, neutral-theme regression, missing safeguard, unbuilt Must
-screen, unhandled edge case, un-applied font/axis all blocked), feature/scoring traceability, the
-import-only setup, and the DTCG token gates.
+screen, unhandled edge case, un-applied font/axis, layout-axis invariants, DS gotchas, missing device
+directive, missing richness dimension all blocked), feature/scoring/device traceability, the
+render/richness runtime scripts (graceful skip without Playwright), the import-only setup, and the DTCG
+token gates.
 **Run it after editing any script** in `.claude/skills/designops-pipeline/scripts/`.
+
+**CI** — [`.github/workflows/selftest.yml`](.github/workflows/selftest.yml) runs the selftest on every
+PR that touches the skill (and on pushes to `main`). The runtime `.mjs` gates self-skip without
+Playwright, so CI needs only python3 + node — a green PR means the regression guard actually passed.
 
 ---
 

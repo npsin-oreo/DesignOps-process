@@ -188,13 +188,13 @@ shadow, rely on `border`); `border_style:translucent`→ prefer `border` over he
 (line-height, tracking, motion easing, container width) as **named tokens**, then apply them — don't
 bury raw values in rules:
 - typography line-height → re-point the Tailwind ramp token `@theme { --text-base--line-height: <n>; }`
-  and `body { line-height: var(--text-base--line-height); }` (gate 11 needs the literal at
+  and `body { line-height: var(--text-base--line-height); }` (gate 6 axis-fidelity sub needs the literal at
   `--text-*--line-height`, so keep it there, not behind a var).
 - tracking / easing / container → product tokens in `:root` (`--tracking-display`, `--ease-brand`,
   `--container-max`), applied via `[data-slot=*]` rules + utilities. Heading weight stays a literal
-  `font-weight: 400` (gate 11 reads the applied weight; a var would hide it).
+  `font-weight: 400` (the gate-6 axis-fidelity sub reads the applied weight; a var would hide it).
 - This keeps the build free of anonymous numbers and makes the axes traceable/themeable, while gate 1
-  (no raw px/hex) and gate 11 (axes applied) both stay green.
+  (no raw px/hex) and the gate-6 fidelity family (axes applied) both stay green.
 
 **B — legacy flat form (no `colors`).** Back-compat: change only the keys present (`--primary`,
 `--radius`, …) inside `:root`, leave the rest at defaults.
@@ -481,7 +481,7 @@ Run through every generated file and verify:
 | D. Component contracts | `audit_prototype.py`→`lint_component_contracts.py`: icon-button name · `DialogTitle` · `Input`↔`FieldLabel` (`component-contracts.md`) | 🔴 block (script) |
 | E. Edge-case coverage | `audit_prototype.py`→`lint_edge_coverage.py` (gate 9): every **Must** edge in `edge-cases.json` is handled in its screen (empty/error/loading/partial state · inline validation · destructive confirm) | 🔴 block (script) |
 | F. Font fidelity | `audit_prototype.py`→`lint_font_fidelity.py` (gate 10): the committed `brand.config.font_sans` is actually applied in `app/layout.*`/`globals.css` (not left at the scaffold default) | 🔴 block (script) |
-| G. Axis fidelity | `audit_prototype.py`→`lint_axis_fidelity.py` (gate 11): the non-colour `axes` (type line-height/weight, pill shape, motion easing) are applied in `globals.css` via `@theme` re-points + `[data-slot=*]` rules — no-hardcode-safe (`rem`/`em`/unitless + `@apply`/CSS-var, never raw `px`/`ms`) | 🔴 block (script) |
+| G. Axis fidelity | `audit_prototype.py`→`lint_axis_fidelity.py` (gate 6 fidelity family, axis sub): the non-colour `axes` (type line-height/weight, pill shape, motion easing) are applied in `globals.css` via `@theme` re-points + `[data-slot=*]` rules — no-hardcode-safe (`rem`/`em`/unitless + `@apply`/CSS-var, never raw `px`/`ms`) | 🔴 block (script) |
 
 - a11y target from `aesthetic.json`/`intelligence.json` `design_directives.a11y_target` (AAA for public-sector)
 - The script writes `output/prototype/docs/audit-report.md`

@@ -2,7 +2,9 @@
 """
 audit_prototype.py — the Step 4.7 audit GATE, as a real runnable check (not agent judgment).
 
-Twelve gates over the BUILT prototype (1-11 static + deterministic; 12 optional render):
+Ten gates over the BUILT prototype (1-9 static + deterministic; 10 optional render). Gate 6 is a
+FIDELITY FAMILY — theme colours + font + non-colour axes (formerly separate gates 6/10/11), folded
+since they answer one question: did the committed Step 2.6 direction actually get applied?
   1. Token compliance — runs lint_hardcodes.py over the generated screens; any raw hex / px /
      ms / raw Tailwind palette utility (bg-gray-500 …) that isn't a token = a violation.
   2. WCAG contrast — parses the prototype's globals.css :root + .dark token blocks, converts
@@ -13,10 +15,12 @@ Twelve gates over the BUILT prototype (1-11 static + deterministic; 12 optional 
      usage contracts (icon-button accessible name, DialogTitle present, Input↔FieldLabel).
   5. Font loading — runs lint_font_imports.py: no remote-font @import in CSS (a Turbopack dev
      500 trap; load fonts with next/font instead).
-  6. Theme fidelity — runs lint_theme_fidelity.py: the identity theme Step 2.6 committed
-     (brand.config.json / aesthetic.json) must actually be applied in globals.css. Catches the
-     "brand colour slapped on a neutral skeleton" regression where card/secondary/muted/border
-     silently stay at the shadcn-neutral default.
+  6. Fidelity family — did the committed Step 2.6 direction actually get applied? ONE gate over three
+     sub-checks (each keeps its own linter): theme colours (lint_theme_fidelity.py — no "brand colour
+     on a neutral skeleton" regression), font (lint_font_fidelity.py — the committed font_sans is
+     wired, not left at the scaffold default), and the NON-colour axes (lint_axis_fidelity.py —
+     type line-height/weight, pill shape, motion easing, layout tokens in @theme). Family FAILs if any
+     sub fails. (Formerly three separate gates 6/10/11 — folded, since they answer one question.)
   7. Directive fidelity — runs lint_directive_fidelity.py: the build must honor design_directives
      (Step 2.5) — destructive actions guarded when safeguard_level is on, an empty-state when
      guidance_level is guided (density/nav are advisory). Reads intelligence.json.
@@ -25,17 +29,11 @@ Twelve gates over the BUILT prototype (1-11 static + deterministic; 12 optional 
   9. Edge-case coverage — runs lint_edge_coverage.py: every Must edge case in edge-cases.json
      (Step 3.7) is actually handled in the screen it maps to (empty/error/loading/partial state,
      inline validation, or a destructive confirm). The back end of the edge-case spine.
- 10. Font fidelity — runs lint_font_fidelity.py: the font_sans Step 2.6 committed in
-     brand.config.json must actually be applied in app/layout.* / globals.css (not left at the
-     scaffold default). Catches the silent font no-op that gate 5/6 don't.
- 11. Axis fidelity — runs lint_axis_fidelity.py: the NON-colour axes Step 2.6 committed in
-     aesthetic.json (typography line-height/weight, pill shape, motion easing) must be applied in
-     globals.css (@theme re-points + [data-slot=*] rules), not declared-but-unapplied.
-Gates 3-11 skip cleanly (—) if their checker / source artifact is missing. With --strict
+Gates 3-9 skip cleanly (—) if their checker / source artifact is missing. With --strict
 a skipped gate counts as a FAILURE (block) — use it only on a complete full-pipeline build
 where every artifact (brand.config / intelligence / aesthetic / screen-inventory / edge-cases)
 sits beside the prototype; on a partial run --strict will block on the legitimately-absent ones.
- 12. Render structure (track E, RENDER-OPTIONAL) — renders the built page (out/, Playwright) at
+ 10. Render structure (track E, RENDER-OPTIONAL) — renders the built page (out/, Playwright) at
      mobile+desktop and checks control-height parity / surface consistency / phone-lock. Needs a
      build + a browser, so it is ALWAYS evaluated outside --strict: a skip never blocks (even in
      strict mode), only a real render failure blocks. Pass --desktop-role to make phone-lock a block.
@@ -88,9 +86,9 @@ _DIRECTIVE_CHECK = HERE / "lint_directive_fidelity.py"
 _SCREEN_CHECK = HERE / "lint_screen_coverage.py"
 _EDGE_CHECK = HERE / "lint_edge_coverage.py"
 
-# gate 12 (render structure, track E) — the ONE runtime gate folded into the report. It renders the
+# gate 10 (render structure, track E) — the ONE runtime gate folded into the report. It renders the
 # built page (Playwright) and checks control-height parity / surface consistency / phone-lock. Unlike
-# gates 1-11 it needs a build (out/) + Playwright, so it is RENDER-OPTIONAL: it is evaluated OUTSIDE
+# gates 1-9 it needs a build (out/) + Playwright, so it is RENDER-OPTIONAL: it is evaluated OUTSIDE
 # --strict (a skip never blocks, even in strict mode — decision D0 in the first-draft-quality proposal),
 # so a machine without a browser is never blocked, but a real render failure still blocks.
 _RENDER_ORCH = HERE.parent / "references" / "runtime-audit" / "scripts" / "audit_runtime.mjs"
@@ -351,7 +349,7 @@ def edge_gate(proto, edges_path=None, screens_path=None):
     return proc.returncode == 0, (proc.stdout.strip() or proc.stderr.strip())
 
 
-# ── gate 12: render structure (track E) — RENDER-OPTIONAL, always outside --strict (D0) ──
+# ── gate 10: render structure (track E) — RENDER-OPTIONAL, always outside --strict (D0) ──
 def _find_built_html(proto):
     """A built, renderable entry beside the prototype (Next static export → out/index.html), or None.
     The render gate needs a build; without one there's nothing to render, so it skips (never a failure)."""
@@ -444,6 +442,31 @@ def _word(v, strict):
     return "PASS" if v else "FAIL"
 
 
+# ── gate 6: FIDELITY FAMILY — did the committed Step 2.6 direction actually get applied? ──
+# theme colours + font + non-colour axes are one concern ("is the chosen aesthetic in the build, or
+# did it regress to the scaffold default?"), so they report as ONE gate with three sub-checks. Each
+# sub keeps its own linter (lint_theme_fidelity / lint_font_fidelity / lint_axis_fidelity) — this only
+# combines their verdicts. Family = FAIL if any sub fails; PASS if any ran and none failed; — if all skip.
+def fidelity_family_gate(proto, theme_path, aes_path):
+    subs = [
+        ("theme", *fidelity_gate(proto, theme_path)),
+        ("font", *font_fidelity_gate(proto, theme_path)),
+        ("axis", *axis_fidelity_gate(proto, aes_path)),
+    ]
+    if any(v is False for _, v, _ in subs):
+        fam = False
+    elif all(v is None for _, v, _ in subs):
+        fam = None
+    else:
+        fam = True
+    lines = []
+    for name, v, o in subs:
+        tag = "—" if v is None else ("PASS" if v else "FAIL")
+        detail = (o or "").strip().replace("\n", " ")
+        lines.append(f"[{name:5}] {tag} — {detail}" if detail else f"[{name:5}] {tag}")
+    return fam, "\n".join(lines)
+
+
 def main(argv):
     args, a11y, scan, report, include_vendored, theme = [], "AA", ["app", "components", "lib"], None, False, None
     strict = False
@@ -503,9 +526,9 @@ def main(argv):
     out += ["## 5. Font loading (Turbopack-safe — no remote @import)",
             "```", font_out or "(skipped)", "```", ""]
 
-    # gate 6 (theme fidelity: committed Step 2.6 identity theme actually applied)
-    fidelity_ok, fidelity_out = fidelity_gate(proto, theme)
-    out += ["## 6. Theme fidelity (committed Step 2.6 theme applied, not regressed to neutral)",
+    # gate 6 (FIDELITY FAMILY: committed Step 2.6 theme + font + non-colour axes all applied)
+    fidelity_ok, fidelity_out = fidelity_family_gate(proto, theme, aes_path)
+    out += ["## 6. Fidelity family (Step 2.6 applied: theme colours + font + non-colour axes)",
             "```", fidelity_out or "(skipped)", "```", ""]
 
     # gate 7 (directive fidelity: build honors design_directives — safeguard/guidance)
@@ -523,17 +546,7 @@ def main(argv):
     out += ["## 9. Edge-case coverage (every Must edge case handled in its screen)",
             "```", edge_out or "(skipped)", "```", ""]
 
-    # gate 10 (font fidelity: committed Step 2.6 font_sans actually applied)
-    font_fid_ok, font_fid_out = font_fidelity_gate(proto, theme)
-    out += ["## 10. Font fidelity (committed Step 2.6 font applied, not the scaffold default)",
-            "```", font_fid_out or "(skipped)", "```", ""]
-
-    # gate 11 (axis fidelity: non-colour axes — type/shape/motion — actually applied)
-    axis_ok, axis_out = axis_fidelity_gate(proto, aes_path)
-    out += ["## 11. Axis fidelity (non-colour axes applied: type scale, pills, motion)",
-            "```", axis_out or "(skipped)", "```", ""]
-
-    # gate 12 (render structure, track E) — RENDER-OPTIONAL: evaluated outside --strict (D0).
+    # gate 10 (render structure, track E) — RENDER-OPTIONAL: evaluated outside --strict (D0).
     # Auto-derive --desktop-role from intelligence.json's responsive rollup (track A → E): a build
     # that serves a desktop role must not be phone-locked, so phone-lock becomes a hard failure.
     if not desktop_role:
@@ -547,7 +560,7 @@ def main(argv):
             except (OSError, ValueError):
                 pass
     render_ok, render_out = render_gate(proto, desktop_role)
-    out += ["## 12. Render structure (control parity / surface / phone-lock — needs a build + Playwright)",
+    out += ["## 10. Render structure (control parity / surface / phone-lock — needs a build + Playwright)",
             "```", render_out or "(skipped)", "```", ""]
 
     # gate 2
@@ -561,10 +574,11 @@ def main(argv):
         contrast_ok, cfails = False, [f"globals.css not found at {css}"]
         out += ["## 2. WCAG contrast", "globals.css not found — cannot verify.", ""]
 
-    # gates that may be None (skipped) pass unless --strict; lint_ok/contrast_ok are never None
+    # gates that may be None (skipped) pass unless --strict; lint_ok/contrast_ok are never None.
+    # fidelity_ok is the FAMILY verdict (theme+font+axis combined); font/axis are no longer separate.
     skippable = (emoji_ok, contract_ok, font_ok, fidelity_ok, directive_ok,
-                 screen_ok, edge_ok, font_fid_ok, axis_ok)
-    # gate 12 (render) is RENDER-OPTIONAL: always evaluated with strict=False, so a skip never blocks
+                 screen_ok, edge_ok)
+    # gate 10 (render) is RENDER-OPTIONAL: always evaluated with strict=False, so a skip never blocks
     # even under --strict (needs a build + Playwright); only a real render failure blocks. (D0)
     blocked = not (lint_ok and contrast_ok and all(_ok(v, strict) for v in skippable)
                    and _ok(render_ok, False))
@@ -576,12 +590,10 @@ def main(argv):
             f"- UX copy (no emoji/dash): {_badge(emoji_ok, strict)}",
             f"- Component contracts: {_badge(contract_ok, strict)}",
             f"- Font loading (no remote @import): {_badge(font_ok, strict)}",
-            f"- Theme fidelity (no neutral regression): {_badge(fidelity_ok, strict)}",
+            f"- Fidelity family (theme + font + axes applied): {_badge(fidelity_ok, strict)}",
             f"- Directive fidelity (safeguards/guidance): {_badge(directive_ok, strict)}",
             f"- Screen coverage (Must screens built): {_badge(screen_ok, strict)}",
             f"- Edge-case coverage (Must edges handled): {_badge(edge_ok, strict)}",
-            f"- Font fidelity (committed font applied): {_badge(font_fid_ok, strict)}",
-            f"- Axis fidelity (type/shape/motion applied): {_badge(axis_ok, strict)}",
             f"- Render structure (control parity/surface/phone-lock): {_badge(render_ok, False)}",
             "", f"**{verdict}**"]
     if cfails:
@@ -602,8 +614,6 @@ def main(argv):
           f"directive={_word(directive_ok, strict)} · "
           f"screens={_word(screen_ok, strict)} · "
           f"edges={_word(edge_ok, strict)} · "
-          f"fontfid={_word(font_fid_ok, strict)} · "
-          f"axisfid={_word(axis_ok, strict)} · "
           f"render={_word(render_ok, False)}")
     if report:
         print(f"  → {report}")

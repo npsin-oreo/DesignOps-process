@@ -25,7 +25,7 @@ without it, every gate prints `SKIPPED` and the run exits 0 (never blocks the de
 
 > **structure gate (track E)** is the render-based answer to the "clean but plain" first-draft gap: it
 > would have caught the PARICH WMS draft-1 failures (a 32px select beside a 48px input, a phone-locked
-> desktop column) that green-passed all 11 static gates. It closes the loop on the C1/C2 scaffold —
+> desktop column) that green-passed all 9 static gates. It closes the loop on the C1/C2 scaffold —
 > those ship a grid + control-parity `[data-slot]` rules, and this gate is what actually *sees* that
 > they took effect. Pass `--desktop-role` (from `intelligence.json` → a desktop-target role) to make
 > phone-lock a hard block instead of an advisory.

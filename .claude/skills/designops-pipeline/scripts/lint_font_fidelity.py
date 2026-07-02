@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-lint_font_fidelity.py — Step 4.7 gate 10: did the prototype actually APPLY the committed font?
+lint_font_fidelity.py — Step 4.7 gate 6 fidelity family (font sub): did the prototype APPLY the committed font?
 
 Step 2.6 commits a `font_sans` in brand.config.json / aesthetic.json, but the bridge only ever
 carried colours into the build. The font directive could silently no-op — the scaffold keeps its

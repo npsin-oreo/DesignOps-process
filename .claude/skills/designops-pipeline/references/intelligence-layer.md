@@ -86,7 +86,7 @@ consume — so UI decisions come from *what the product needs*, not from a featu
 
 `design_directives` is the **seam** Component Mapping consumes:
 `density_target → layout primitive` · `safeguard_level → confirm/undo/preview` · `guidance_level → onboarding/copy` ·
-`a11y_target → component variants + audit target` · `navigation_model → app shell` · `mandatory_flows → injected screens` · `trust_emphasis → evidence/transparency` · `responsive → layout axis container widths + the render phone-lock gate (a desktop/both target makes gate 12 block a phone-locked build)`.
+`a11y_target → component variants + audit target` · `navigation_model → app shell` · `mandatory_flows → injected screens` · `trust_emphasis → evidence/transparency` · `responsive → layout axis container widths + the render phone-lock gate (a desktop/both target makes gate 10 block a phone-locked build)`.
 
 **`responsive` (track A):** each `user_type.primary_device` (required — a device is always knowable, so "evidence or silence" does not apply) rolls up here. `target` must reflect the mix — a desk + mobile audience ⇒ `both` — and `desktop_roles`/`mobile_roles` name which roles go where. This is root cause #1: a build went mobile-only because the split desk/frontline audience was never captured as a directive. The audit auto-passes `--desktop-role` to the render gate when `target ∈ {desktop, both}`.
 

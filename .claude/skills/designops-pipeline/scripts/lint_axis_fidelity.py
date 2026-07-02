@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-lint_axis_fidelity.py — Step 4.7 gate 11: were the NON-colour axes actually applied?
+lint_axis_fidelity.py — Step 4.7 gate 6 fidelity family (axis sub): were the NON-colour axes actually applied?
 
 Step 2.6's `axes` block (typography / shape / motion / …) records the design language pulled from
 each system's DESIGN.md beyond colour. Gate 6 verifies colours and gate 10 the font, but the rest

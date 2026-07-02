@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-lint_theme_fidelity.py — Step 4.7 gate 6: did the prototype actually APPLY the committed theme?
+lint_theme_fidelity.py — Step 4.7 gate 6 fidelity family (theme sub): did the prototype APPLY the committed colours?
 
 Step 2.6 resolves a full identity theme (surfaces, text hierarchy, accent, border + dark) into
 aesthetic.json / brand.config.json. The bridge USED to carry only `--primary`, so the prototype's

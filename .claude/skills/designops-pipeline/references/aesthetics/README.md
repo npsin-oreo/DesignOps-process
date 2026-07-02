@@ -71,7 +71,7 @@ from hex — the agent never self-certifies; named systems must resolve in this 
 The six axes above stop at colour / type / radius / motion, so **layout** (grid, gutter, container
 widths, control-height scale, touch target) was left to ad-hoc per-screen decisions → cramped
 mobile-only columns, mismatched control heights, no grid. The `layout` axis makes structure a
-*resolved token* the build can apply from screen 1 and gate 11 can verify — the same "declared →
+*resolved token* the build can apply from screen 1 and the fidelity family (gate 6, axis sub) can verify — the same "declared →
 applied" discipline as the other axes.
 
 It is **directive-derived**, not pulled from a DESIGN.md: `source: "intelligence"`, resolved from
@@ -98,7 +98,7 @@ system composition.
 **Units are no-hardcode-safe** (`rem`/unitless, never raw `px`/`ms`) so the values land in `@theme`
 without tripping gate 1 — e.g. the 44px touch floor is expressed as `2.75rem`.
 
-### `@theme` token contract (what fix C scaffolds, what gate 11 checks)
+### `@theme` token contract (what fix C scaffolds, what the gate-6 fidelity family axis sub checks)
 
 The build applies `layout.resolved` by re-pointing Tailwind's `@theme` in `globals.css` (so existing
 utilities inherit it) — never by editing components:

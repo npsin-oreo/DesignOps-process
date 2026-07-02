@@ -397,10 +397,10 @@ if command -v node >/dev/null 2>&1; then
 else
   ok "node absent — runtime-audit syntax/skip checks N/A"
 fi
-# gate 12 (render) wired into audit_prototype AND held outside --strict (decision D0): a prototype with
+# gate 10 (render) wired into audit_prototype AND held outside --strict (decision D0): a prototype with
 # no out/ build reports render as skipped (—), and --strict must NOT flip that skip into a FAIL.
 R12="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA 2>&1)"
-case "$R12" in *"render="*) ok "audit_prototype reports gate 12 (render=)";; *) bad "gate 12 not wired into audit_prototype";; esac
+case "$R12" in *"render="*) ok "audit_prototype reports gate 10 (render=)";; *) bad "gate 10 not wired into audit_prototype";; esac
 R12S="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA --strict 2>&1)"
 case "$R12S" in *"render=—"*) ok "render gate stays — under --strict (never blocks w/o a build, D0)";; *) bad "render should be — (skipped) under --strict, not FAIL";; esac
 
@@ -619,7 +619,7 @@ python3 "$LEC" "$PROTO9" "$TMP/c9_x.json" "$TMP/c9_scr.json" >/dev/null 2>&1 && 
 # audit_prototype wires gate 9 (edges= in summary)
 echo "$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO9" --edges "$TMP/c9_edges.json" --screens "$TMP/c9_scr.json" 2>&1)" | grep -q "edges=" && ok "audit_prototype reports gate 9 (edges=)" || bad "gate 9 not wired into audit_prototype"
 
-# ── T18. lint_font_fidelity — gate 10 (committed font actually applied) ───────
+# ── T18. lint_font_fidelity — gate 6 fidelity family, font sub (committed font applied) ──
 echo "[T18] lint_font_fidelity — committed font_sans must reach the build"
 LFF="$SCRIPTS_DIR/lint_font_fidelity.py"
 PROTO10="$TMP/proto10"; mkdir -p "$PROTO10/app"
@@ -634,8 +634,14 @@ python3 "$LFF" "$PROTO10" "$TMP/bc10.json" >/dev/null 2>&1 && ok "committed Inte
 # no font_sans committed → skip cleanly (exit 0)
 echo '{"project_name":"X","radius":"0.5rem"}' > "$TMP/bc10b.json"
 python3 "$LFF" "$PROTO10" "$TMP/bc10b.json" >/dev/null 2>&1 && ok "no font_sans committed → graceful skip" || bad "no-font theme should skip, not block"
-# audit wires gate 10 (fontfid= in summary)
-echo "$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO10" --theme "$TMP/bc10.json" 2>&1)" | grep -q "fontfid=" && ok "audit_prototype reports gate 10 (fontfid=)" || bad "gate 10 not wired into audit_prototype"
+# audit folds font into the gate-6 fidelity family (theme+font+axes); the report shows the [font] sub
+python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO10" --theme "$TMP/bc10.json" --report "$TMP/aud10.md" >/dev/null 2>&1
+{ grep -q "Fidelity family" "$TMP/aud10.md" && grep -q "\[font" "$TMP/aud10.md"; } && ok "audit fidelity family covers font (folded gate 6)" || bad "fidelity family not wired for font"
+# the family console token replaces the old fontfid=/axisfid= (capture into a var — piping python to
+# grep trips pipefail when the audit exits 1)
+R10="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO10" --theme "$TMP/bc10.json" 2>&1)"
+case "$R10" in *"fidelity="*) : ;; *) bad "fidelity family token missing from console"; R10=""; esac
+case "$R10" in *"fontfid="*|*"axisfid="*) bad "old fontfid=/axisfid= tokens still present (should be folded)";; "") : ;; *) ok "audit reports one fidelity= family token (fontfid=/axisfid= folded)";; esac
 
 # ── T19. validate_aesthetic — axes composition (coherence gate) ───────────────
 echo "[T19] validate_aesthetic — per-axis composition + coherence cap"
@@ -666,7 +672,7 @@ OUT="$(python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" 2>&1)"; echo "$O
 _axes "{**{ax:{'source':'linear-app',$R} for ax in ['typography','shape','elevation','spacing','motion']}, 'color':{'source':'openai',$R}}" "linear-app"
 OUT="$(python3 "$VA" "$TMP/aes_axes.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "axes.color.source" && ok "color axis must match direction.name → blocks" || bad "color/direction mismatch not blocked"
 
-# ── T20. lint_axis_fidelity — gate 11 (non-colour axes applied) ───────────────
+# ── T20. lint_axis_fidelity — gate 6 fidelity family, axis sub (non-colour axes applied) ──
 echo "[T20] lint_axis_fidelity — type/shape/motion axes must reach the build"
 LAF="$SCRIPTS_DIR/lint_axis_fidelity.py"
 cat > "$TMP/axes_aes.json" <<'JSON'
@@ -701,7 +707,7 @@ OUT="$(python3 "$LAF" "$TMP/axes_nopill.css" "$TMP/axes_aes.json" 2>&1)"; echo "
 # no axes block → graceful skip (exit 0)
 echo '{"meta":{}}' > "$TMP/axes_none.json"
 python3 "$LAF" "$TMP/axes_ok.css" "$TMP/axes_none.json" >/dev/null 2>&1 && ok "no axes block → graceful skip" || bad "no-axes should skip, not block"
-# C0 — axes applied via a LOCAL @import (DS-native brand.css) must be followed (gate 11 import-aware)
+# C0 — axes applied via a LOCAL @import (DS-native brand.css) must be followed (gate 6 (axis sub) import-aware)
 cat > "$TMP/brand-axes.css" <<'CSS'
 @theme { --text-base--line-height: 1.65; }
 h1, h2, h3 { font-weight: 600; }
@@ -710,13 +716,13 @@ h1, h2, h3 { font-weight: 600; }
 [data-slot="button"] { transition-timing-function: var(--ease-out-soft); }
 CSS
 printf '@import "@npsin-oreo/design-system/styles.css";\n@import "./brand-axes.css";\n' > "$TMP/axes_import.css"
-python3 "$LAF" "$TMP/axes_import.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && ok "axes applied via @import ./brand.css → gate 11 follows it (PASS)" || bad "gate 11 should resolve a local @import for axes"
+python3 "$LAF" "$TMP/axes_import.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && ok "axes applied via @import ./brand.css → gate 6 (axis sub) follows it (PASS)" || bad "gate 6 (axis sub) should resolve a local @import for axes"
 # package @import only (DS base, no local axes) → still blocked (no leak)
 printf '@import "@npsin-oreo/design-system/styles.css";\n' > "$TMP/axes_pkgonly.css"
-python3 "$LAF" "$TMP/axes_pkgonly.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && bad "package @import must not satisfy axes" || ok "package @import not followed → axes still blocked (gate 11)"
+python3 "$LAF" "$TMP/axes_pkgonly.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && bad "package @import must not satisfy axes" || ok "package @import not followed → axes still blocked (gate 6 (axis sub))"
 
-# ── T21. layout axis (fix B) — validate_aesthetic invariants (B2) + gate 11 tokens (B3) ──
-echo "[T21] layout axis — validate_aesthetic invariants (B2) + gate 11 tokens (B3)"
+# ── T21. layout axis (fix B) — validate_aesthetic invariants (B2) + gate 6 (axis sub) tokens (B3) ──
+echo "[T21] layout axis — validate_aesthetic invariants (B2) + gate 6 (axis sub) tokens (B3)"
 # reuse the valid $TMP/aesthetic.json (direction.name=linear-app); attach the required 6 axes + a
 # directive-derived layout axis whose resolved block we vary.
 _layout() {  # $1 = python literal for layout.resolved, or None to omit resolved
@@ -745,17 +751,17 @@ OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "
 # B2.4 layout present but resolved missing → block (the whole point of the axis)
 _layout None
 OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "resolved is required" && ok "layout without resolved → blocked" || bad "missing resolved not blocked"
-# B3 — gate 11: the committed layout tokens must actually land in globals.css @theme (else silent no-op)
+# B3 — gate 6 (axis sub): the committed layout tokens must actually land in globals.css @theme (else silent no-op)
 cat > "$TMP/layout_aes.json" <<'JSON'
 {"axes":{"layout":{"resolved":{"gutter":"1.5rem","container_max":{"content":"80rem"},"control_h":{"mobile":"3rem","desktop":"2.5rem"},"touch_min":"2.75rem"}}}}
 JSON
 cat > "$TMP/layout_ok.css" <<'CSS'
 @theme { --spacing-gutter: 1.5rem; --container-content: 80rem; --control-h-mobile: 3rem; --control-h-desktop: 2.5rem; --touch-min: 2.75rem; }
 CSS
-python3 "$LAF" "$TMP/layout_ok.css" "$TMP/layout_aes.json" >/dev/null 2>&1 && ok "layout tokens applied in @theme → exit 0 (gate 11)" || bad "applied layout tokens wrongly blocked"
-# drift: committed gutter 1.5rem but the build shipped 1rem → the no-op gate 11 exists to catch
+python3 "$LAF" "$TMP/layout_ok.css" "$TMP/layout_aes.json" >/dev/null 2>&1 && ok "layout tokens applied in @theme → exit 0 (gate 6 (axis sub))" || bad "applied layout tokens wrongly blocked"
+# drift: committed gutter 1.5rem but the build shipped 1rem → the no-op gate 6 (axis sub) exists to catch
 sed 's/--spacing-gutter: 1.5rem/--spacing-gutter: 1rem/' "$TMP/layout_ok.css" > "$TMP/layout_drift.css"
-OUT="$(python3 "$LAF" "$TMP/layout_drift.css" "$TMP/layout_aes.json" 2>&1)"; echo "$OUT" | grep -q "spacing-gutter" && ok "layout token drift (declared 1.5rem, built 1rem) → blocked (gate 11)" || bad "layout token drift not blocked"
+OUT="$(python3 "$LAF" "$TMP/layout_drift.css" "$TMP/layout_aes.json" 2>&1)"; echo "$OUT" | grep -q "spacing-gutter" && ok "layout token drift (declared 1.5rem, built 1rem) → blocked (gate 6 (axis sub))" || bad "layout token drift not blocked"
 # grid_cols is a component prop, not a CSS token → it must NOT be required in globals.css
 cat > "$TMP/layout_gridonly_aes.json" <<'JSON'
 {"axes":{"layout":{"resolved":{"grid_cols":{"sm":4,"md":8,"lg":12},"gutter":"1.5rem"}}}}

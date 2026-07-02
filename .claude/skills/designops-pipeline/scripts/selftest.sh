@@ -372,12 +372,20 @@ case "$AUD_OUT" in *"directive=FAIL"*) ok "audit_prototype runs gate 7 (directiv
 RT="$SCRIPTS_DIR/../references/runtime-audit/scripts"
 [ -f "$RT/audit_runtime.mjs" ] && [ -f "$RT/axe_audit.mjs" ] && [ -f "$RT/verify_states.mjs" ] && ok "runtime-audit scripts vendored" || bad "runtime-audit scripts missing"
 if command -v node >/dev/null 2>&1; then
-  for s in audit_runtime axe_audit verify_states verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
+  for s in audit_runtime axe_audit verify_states verify_structure verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
   echo '<!doctype html><html lang="en"><head><title>x</title></head><body><button>Go</button></body></html>' > "$TMP/rt.html"
   node "$RT/audit_runtime.mjs" "$TMP/rt.html" >/dev/null 2>&1 && ok "runtime audit skips cleanly w/o Playwright → exit 0" || bad "runtime audit should skip (exit 0) without Playwright"
+  # the new render structure gate (track E) must also degrade gracefully without Playwright
+  node "$RT/verify_structure.mjs" "$TMP/rt.html" 2>&1 | grep -q "SKIPPED" && ok "verify_structure skips cleanly w/o Playwright (track E)" || bad "verify_structure should print SKIPPED without Playwright"
 else
   ok "node absent — runtime-audit syntax/skip checks N/A"
 fi
+# gate 12 (render) wired into audit_prototype AND held outside --strict (decision D0): a prototype with
+# no out/ build reports render as skipped (—), and --strict must NOT flip that skip into a FAIL.
+R12="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA 2>&1)"
+case "$R12" in *"render="*) ok "audit_prototype reports gate 12 (render=)";; *) bad "gate 12 not wired into audit_prototype";; esac
+R12S="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA --strict 2>&1)"
+case "$R12S" in *"render=—"*) ok "render gate stays — under --strict (never blocks w/o a build, D0)";; *) bad "render should be — (skipped) under --strict, not FAIL";; esac
 
 # ── T11. Folded skills — DTCG token foundation gates (brandkit) ───────────────
 echo "[T11] brandkit/DTCG gates + folded-skill assets present"

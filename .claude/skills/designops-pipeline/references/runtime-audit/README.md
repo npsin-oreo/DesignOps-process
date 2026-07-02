@@ -14,11 +14,19 @@ without it, every gate prints `SKIPPED` and the run exits 0 (never blocks the de
 |------|------|---------|---------|
 | **axe** | `axe_audit.mjs` | axe-core WCAG 2.x A/AA: button/link names, image alt, `lang`, `<title>`, ARIA roles, label associations, landmarks, heading order | 🔴 yes |
 | **states** | `verify_states.mjs` | text/bg contrast in **default + hover + focus** (a button that turns the wrong color on hover) | 🔴 yes |
+| **structure** | `verify_structure.mjs` | render at mobile+desktop: **control-height parity** within a form (the 32px select next to a 48px input — the NativeSelect className→wrapper bug), **surface consistency** across breakpoints, **phone-lock** (content capped to phone width on desktop — advisory unless `--desktop-role`) | 🔴 yes (phone-lock advisory) |
 | **focus-trap** | `verify_focustrap.mjs` | modal traps Tab, has `role=dialog`+`aria-modal`+name, Esc returns focus (WCAG 2.1.2/2.4.3) — only when `--open=<sel>` given | 🔴 yes |
 | **taste** | `taste_audit.mjs` | render-based anti-slop (type-scale drama, equal-weight repetition, body measure, palette, pure #000/#fff, whitespace) | advisory (report only) |
 | rtl / responsive | `verify_rtl.mjs` · `verify_responsive.mjs` | RTL mirroring · breakpoint behavior (run directly when relevant) | 🔴 yes |
 
-`audit_runtime.mjs` orchestrates axe + states (+ focus-trap if a trigger is given) + the taste report.
+`audit_runtime.mjs` orchestrates axe + states + structure (+ focus-trap if a trigger is given) + the taste report.
+
+> **structure gate (track E)** is the render-based answer to the "clean but plain" first-draft gap: it
+> would have caught the PARICH WMS draft-1 failures (a 32px select beside a 48px input, a phone-locked
+> desktop column) that green-passed all 11 static gates. It closes the loop on the C1/C2 scaffold —
+> those ship a grid + control-parity `[data-slot]` rules, and this gate is what actually *sees* that
+> they took effect. Pass `--desktop-role` (from `intelligence.json` → a desktop-target role) to make
+> phone-lock a hard block instead of an advisory.
 
 ## Enable + run (inside `output/prototype/`, after `npm run build`)
 

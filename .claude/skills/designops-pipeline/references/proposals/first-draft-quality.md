@@ -98,8 +98,12 @@ in `globals.css`. Token contract in `references/aesthetics/README.md` § "layout
 
 ## Rollout phasing
 
-- **Phase 1 (highest ROI, structural):** B + C + E. A layout system from screen 1 + a
-  rendering gate catches the majority of what went wrong this round.
+- **Phase 1 (highest ROI, structural):** B + C + E — **IMPLEMENTED**. Layout axis (B1-B3:
+  `axes.layout` + `validate_aesthetic.py` invariants + gate 11 token check), scaffold defaults
+  (C1 `Grid`/`Col`/`Stack` + `@theme` layout tokens, C2 `[data-slot]` control-parity), and the
+  render gate (E1 `verify_structure.mjs` + E2 gate 12 in `audit_prototype.py`, outside `--strict`
+  per D0 + E3 selftest T21/T22). A layout system from screen 1 + a rendering gate catches the
+  majority of what went wrong this round.
 - **Phase 2:** A + D + G. Make dual-mode a first-class traceable requirement, teach the
   lint the DS gotchas, codify demo-prefill.
 - **Phase 3 (richness):** F + H + I + J. Close the "clean but plain" gap with usage

@@ -45,10 +45,12 @@ function run(script, extra = []) {
   return { code: p.status ?? 0, skipped: /SKIPPED/.test(out), out };
 }
 
-// blocking gates (hard a11y); focus-trap only runs when a trigger selector is given
+// blocking gates (hard a11y + render structure); focus-trap only runs when a trigger selector is given
+const desktopRole = argv.find((a) => a.startsWith("--desktop-role"));
 const gates = [
   ["axe", "axe_audit.mjs", []],
   ["states", "verify_states.mjs", []],
+  ["structure", "verify_structure.mjs", desktopRole ? [desktopRole] : []],
 ];
 if (open) gates.push(["focus-trap", "verify_focustrap.mjs", [open, ...(dialog ? [dialog] : [])]]);
 

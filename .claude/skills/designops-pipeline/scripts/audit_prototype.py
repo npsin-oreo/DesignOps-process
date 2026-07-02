@@ -2,7 +2,7 @@
 """
 audit_prototype.py — the Step 4.7 audit GATE, as a real runnable check (not agent judgment).
 
-Eleven objective, deterministic gates over the BUILT prototype:
+Twelve gates over the BUILT prototype (1-11 static + deterministic; 12 optional render):
   1. Token compliance — runs lint_hardcodes.py over the generated screens; any raw hex / px /
      ms / raw Tailwind palette utility (bg-gray-500 …) that isn't a token = a violation.
   2. WCAG contrast — parses the prototype's globals.css :root + .dark token blocks, converts
@@ -35,6 +35,10 @@ Gates 3-11 skip cleanly (—) if their checker / source artifact is missing. Wit
 a skipped gate counts as a FAILURE (block) — use it only on a complete full-pipeline build
 where every artifact (brand.config / intelligence / aesthetic / screen-inventory / edge-cases)
 sits beside the prototype; on a partial run --strict will block on the legitimately-absent ones.
+ 12. Render structure (track E, RENDER-OPTIONAL) — renders the built page (out/, Playwright) at
+     mobile+desktop and checks control-height parity / surface consistency / phone-lock. Needs a
+     build + a browser, so it is ALWAYS evaluated outside --strict: a skip never blocks (even in
+     strict mode), only a real render failure blocks. Pass --desktop-role to make phone-lock a block.
 
 By default it audits the GENERATED surface only — `components/ui` (vendored shadcn primitives),
 any `docs/` dir (DS demos + these reports), and node_modules/.next/out are auto-excluded, so you
@@ -83,6 +87,13 @@ _AXIS_FIDELITY_CHECK = HERE / "lint_axis_fidelity.py"
 _DIRECTIVE_CHECK = HERE / "lint_directive_fidelity.py"
 _SCREEN_CHECK = HERE / "lint_screen_coverage.py"
 _EDGE_CHECK = HERE / "lint_edge_coverage.py"
+
+# gate 12 (render structure, track E) — the ONE runtime gate folded into the report. It renders the
+# built page (Playwright) and checks control-height parity / surface consistency / phone-lock. Unlike
+# gates 1-11 it needs a build (out/) + Playwright, so it is RENDER-OPTIONAL: it is evaluated OUTSIDE
+# --strict (a skip never blocks, even in strict mode — decision D0 in the first-draft-quality proposal),
+# so a machine without a browser is never blocked, but a real render failure still blocks.
+_RENDER_ORCH = HERE.parent / "references" / "runtime-audit" / "scripts" / "audit_runtime.mjs"
 
 # Required pairs FAIL the gate; advisory pairs are reported only. shadcn/ui token names.
 REQUIRED_PAIRS = [
@@ -340,6 +351,53 @@ def edge_gate(proto, edges_path=None, screens_path=None):
     return proc.returncode == 0, (proc.stdout.strip() or proc.stderr.strip())
 
 
+# ── gate 12: render structure (track E) — RENDER-OPTIONAL, always outside --strict (D0) ──
+def _find_built_html(proto):
+    """A built, renderable entry beside the prototype (Next static export → out/index.html), or None.
+    The render gate needs a build; without one there's nothing to render, so it skips (never a failure)."""
+    for cand in (proto / "out" / "index.html", proto / "out" / "index.htm"):
+        if cand.is_file():
+            return cand
+    # any exported route (out/<page>/index.html) as a fallback entry
+    out = proto / "out"
+    if out.is_dir():
+        for p in sorted(out.rglob("index.html")):
+            return p
+    return None
+
+
+def _find_render_orch(proto):
+    """The runtime orchestrator to run. PREFER the copy inside the prototype (proto/scripts/runtime/…):
+    ESM `import('playwright')` resolves from the SCRIPT's own location, so only a copy that sits beside
+    the prototype's node_modules can load Playwright (this is the README's enable step). The vendored
+    skill copy is a last resort — it self-skips when Playwright isn't up-tree, which is the honest result."""
+    local = proto / "scripts" / "runtime" / "audit_runtime.mjs"
+    if local.is_file():
+        return local
+    return _RENDER_ORCH if _RENDER_ORCH.is_file() else None
+
+
+def render_gate(proto, desktop_role=False):
+    """Spawn the runtime orchestrator on the built page (cwd=proto). Returns None (skipped) when there's
+    no build, no node, no in-prototype orchestrator, or Playwright is absent — the orchestrator prints
+    SKIPPED and exits 0, which we map to skipped, not a pass. Only a real render failure returns False."""
+    import shutil
+    html = _find_built_html(proto)
+    orch = _find_render_orch(proto)
+    if not html or not orch or not shutil.which("node"):
+        return None, ("skipped (needs a build + the runtime scripts in the prototype: `npm run build`, "
+                      "then copy references/runtime-audit/scripts/*.mjs → prototype/scripts/runtime/)")
+    cmd = ["node", str(orch), str(html)]
+    if desktop_role:
+        cmd.append("--desktop-role")
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(proto))
+    out = f"{proc.stdout}{proc.stderr}".strip()
+    # every runtime sub-gate SKIPPED (Playwright not installed) → treat as skipped, not a pass
+    if "all gates SKIPPED" in out or ("SKIPPED" in out and "PASS" not in out and "FAIL" not in out):
+        return None, "skipped (Playwright not installed — npm i -D playwright && npx playwright install chromium)"
+    return proc.returncode == 0, out
+
+
 # ── gate 2: WCAG contrast over the actual theme ───────────────────────────────
 def contrast_gate(css_path, a11y):
     text = _read_css_with_imports(css_path)   # follow a local @import "./brand.css" (DS-native theming)
@@ -390,6 +448,7 @@ def main(argv):
     args, a11y, scan, report, include_vendored, theme = [], "AA", ["app", "components", "lib"], None, False, None
     strict = False
     intel, screens_path, edges_path, aes_path = None, None, None, None
+    desktop_role = False
     i = 0
     while i < len(argv):
         if argv[i] == "--a11y" and i + 1 < len(argv):
@@ -412,6 +471,8 @@ def main(argv):
             edges_path = argv[i + 1]; i += 2
         elif argv[i] == "--aesthetic" and i + 1 < len(argv):
             aes_path = argv[i + 1]; i += 2
+        elif argv[i] == "--desktop-role":
+            desktop_role = True; i += 1
         else:
             args.append(argv[i]); i += 1
     if not args:
@@ -472,6 +533,11 @@ def main(argv):
     out += ["## 11. Axis fidelity (non-colour axes applied: type scale, pills, motion)",
             "```", axis_out or "(skipped)", "```", ""]
 
+    # gate 12 (render structure, track E) — RENDER-OPTIONAL: evaluated outside --strict (D0)
+    render_ok, render_out = render_gate(proto, desktop_role)
+    out += ["## 12. Render structure (control parity / surface / phone-lock — needs a build + Playwright)",
+            "```", render_out or "(skipped)", "```", ""]
+
     # gate 2
     css = proto / "app" / "globals.css"
     if css.is_file():
@@ -486,7 +552,10 @@ def main(argv):
     # gates that may be None (skipped) pass unless --strict; lint_ok/contrast_ok are never None
     skippable = (emoji_ok, contract_ok, font_ok, fidelity_ok, directive_ok,
                  screen_ok, edge_ok, font_fid_ok, axis_ok)
-    blocked = not (lint_ok and contrast_ok and all(_ok(v, strict) for v in skippable))
+    # gate 12 (render) is RENDER-OPTIONAL: always evaluated with strict=False, so a skip never blocks
+    # even under --strict (needs a build + Playwright); only a real render failure blocks. (D0)
+    blocked = not (lint_ok and contrast_ok and all(_ok(v, strict) for v in skippable)
+                   and _ok(render_ok, False))
     verdict = "🔴 BLOCKED" if blocked else "🟢 PASS"
     if strict:
         verdict += " (strict — skipped gates count as failures)"
@@ -501,6 +570,7 @@ def main(argv):
             f"- Edge-case coverage (Must edges handled): {_badge(edge_ok, strict)}",
             f"- Font fidelity (committed font applied): {_badge(font_fid_ok, strict)}",
             f"- Axis fidelity (type/shape/motion applied): {_badge(axis_ok, strict)}",
+            f"- Render structure (control parity/surface/phone-lock): {_badge(render_ok, False)}",
             "", f"**{verdict}**"]
     if cfails:
         out += ["", "### Contrast failures", *[f"- {f}" for f in cfails]]
@@ -521,7 +591,8 @@ def main(argv):
           f"screens={_word(screen_ok, strict)} · "
           f"edges={_word(edge_ok, strict)} · "
           f"fontfid={_word(font_fid_ok, strict)} · "
-          f"axisfid={_word(axis_ok, strict)}")
+          f"axisfid={_word(axis_ok, strict)} · "
+          f"render={_word(render_ok, False)}")
     if report:
         print(f"  → {report}")
     for f in cfails:

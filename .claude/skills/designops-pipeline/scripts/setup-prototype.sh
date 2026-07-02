@@ -51,7 +51,7 @@ err() { echo "[setup-prototype] ERROR: $*" >&2; exit 1; }
 
 command -v npm >/dev/null 2>&1 || err "npm required"
 PROTO="$OUT/prototype"
-mkdir -p "$PROTO/app" "$PROTO/lib"
+mkdir -p "$PROTO/app" "$PROTO/lib" "$PROTO/components"
 
 # ── scaffold a minimal, buildable Next product that IMPORTS the DS ──────────────
 [ -f "$PROTO/package.json" ] || cat > "$PROTO/package.json" <<JSON
@@ -86,6 +86,60 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 TS
+# Layout primitives (T-C1): a responsive 4/8/12 grid + a vertical stack so every screen has real
+# structure from the first draft (not an ad-hoc mobile-only column). Column counts mirror the layout
+# axis (aesthetic.json → axes.layout.resolved.grid_cols); gap/width read the @theme layout tokens
+# written into globals.css below. Immutable-DS-safe: pure composition, no component edits.
+[ -f "$PROTO/components/layout.tsx" ] || cat > "$PROTO/components/layout.tsx" <<'TSX'
+import { cn } from "@/lib/utils";
+
+/**
+ * Layout primitives — a responsive 4/8/12 grid + a vertical stack so structure exists from screen 1.
+ * Column counts come from the layout axis (aesthetic.json → axes.layout.resolved.grid_cols);
+ * gap + widths read the @theme layout tokens (--spacing-gutter, --container-content) in globals.css.
+ */
+
+// Tailwind extracts STATIC class strings only — never interpolate `col-span-${n}`, so map to literals.
+const SPAN = {
+  1: "col-span-1", 2: "col-span-2", 3: "col-span-3", 4: "col-span-4",
+  5: "col-span-5", 6: "col-span-6", 7: "col-span-7", 8: "col-span-8",
+  9: "col-span-9", 10: "col-span-10", 11: "col-span-11", 12: "col-span-12",
+} as const;
+const SPAN_MD = {
+  1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4",
+  5: "md:col-span-5", 6: "md:col-span-6", 7: "md:col-span-7", 8: "md:col-span-8",
+  9: "md:col-span-9", 10: "md:col-span-10", 11: "md:col-span-11", 12: "md:col-span-12",
+} as const;
+const SPAN_LG = {
+  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4",
+  5: "lg:col-span-5", 6: "lg:col-span-6", 7: "lg:col-span-7", 8: "lg:col-span-8",
+  9: "lg:col-span-9", 10: "lg:col-span-10", 11: "lg:col-span-11", 12: "lg:col-span-12",
+} as const;
+type Span = keyof typeof SPAN;
+
+/** Responsive grid: 4 cols (mobile) → 8 (md) → 12 (lg), gap = --spacing-gutter. */
+function Grid({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div className={cn("grid grid-cols-4 gap-gutter md:grid-cols-8 lg:grid-cols-12", className)} {...props} />
+  );
+}
+
+/** A grid child. Give a per-breakpoint span (out of 4 / 8 / 12); omit to inherit the flow. */
+function Col({
+  span, md, lg, className, ...props
+}: React.ComponentProps<"div"> & { span?: Span; md?: Span; lg?: Span }) {
+  return (
+    <div className={cn(span && SPAN[span], md && SPAN_MD[md], lg && SPAN_LG[lg], className)} {...props} />
+  );
+}
+
+/** Vertical rhythm: a flex column with the gutter gap. Override the gap via className. */
+function Stack({ className, ...props }: React.ComponentProps<"div">) {
+  return <div className={cn("flex flex-col gap-gutter", className)} {...props} />;
+}
+
+export { Grid, Col, Stack };
+TSX
 [ -f "$PROTO/app/layout.tsx" ] || cat > "$PROTO/app/layout.tsx" <<'TSX'
 import "./globals.css";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -108,6 +162,39 @@ if [ ! -f "$CSS" ] || ! grep -q "@source.*$DS_NAME" "$CSS" 2>/dev/null; then
 @source "../node_modules/$DS_NAME/components";   /* gotcha #1 — else components render unstyled */
 @source not "../public";   /* gotcha #2 — Tailwind v4 auto-source-detection reads binaries (webp/png) here as text and emits garbage classes → Turbopack/Lightning CSS 500s */
 @source not "../.next";    /* gotcha #3 — next/image writes optimized binaries to .next/cache/images at runtime; with a nested git root .gitignore is not consulted, so exclude explicitly */
+
+/* layout axis defaults (T-C1) — structure tokens so a grid + comfortable controls exist from
+   screen 1. Values mirror aesthetic.json → axes.layout.resolved; Step 2.6's resolved layout.*
+   OVERRIDES these (a later @theme wins the cascade) when a brand theme is applied. rem/unitless
+   only (44px tap target → 2.75rem) so gate 1 (no raw px) stays green. */
+@theme {
+  --spacing-gutter: 1.5rem;      /* grid/stack gap + page padding → gap-gutter, p-gutter */
+  --container-content: 80rem;    /* page max-width → max-w-content */
+  --container-prose: 48rem;      /* reading width → max-w-prose */
+  --control-h-mobile: 3rem;      /* default control height (touch) */
+  --control-h-desktop: 2.5rem;   /* lg: control height (pointer) */
+  --touch-min: 2.75rem;          /* 44px minimum tap target */
+}
+
+/* control-height parity (T-C2) — the DS sizes input / select-trigger / native-select independently,
+   and NativeSelect routes className to its WRAPPER (data-slot=native-select-wrapper), so a height
+   className can NEVER reach the inner <select> (data-slot=native-select, hardcoded h-8). That is the
+   silent 32px-select-next-to-a-48px-input bug that passes every static gate. These rules pin the inner
+   slots to one height token so controls in a form always match. var() only (no raw px → gate 1 safe);
+   tokens come from @theme above and Step 2.6 can override them. An explicit size=sm still wins (higher
+   specificity), so this sets the DEFAULT parity without locking out intentional compact controls. */
+[data-slot="input"],
+[data-slot="select-trigger"],
+[data-slot="native-select"] {
+  height: var(--control-h-mobile);
+}
+@media (min-width: 64rem) {   /* Tailwind lg — pointer devices get the compact control height */
+  [data-slot="input"],
+  [data-slot="select-trigger"],
+  [data-slot="native-select"] {
+    height: var(--control-h-desktop);
+  }
+}
 CSS
   log "wrote Tailwind wiring → $CSS (@import styles + @source components, excludes public/.next)"
 fi
@@ -185,4 +272,6 @@ log "Installing $DS_NAME ($IMPORT_PKG, pinned) + Next/Tailwind (imported, NOT co
 
 log "✓ prototype ready → $PROTO — DS imported from $DS_NAME, not copied"
 log "  components are immutable (node_modules) — theme via Step 2.6 token + [data-slot=*] overrides"
-log "  add screens under $PROTO/app, then: cd $PROTO && npm run dev"
+log "  layout: <Grid>/<Col>/<Stack> in components/layout.tsx + @theme layout tokens (4/8/12 grid, gutter, control heights)"
+log "  control parity: [data-slot] rules pin input/select/native-select to one height (fixes NativeSelect className→wrapper bug)"
+log "  add screens under $PROTO/app (compose with Grid/Col/Stack), then: cd $PROTO && npm run dev"

@@ -73,7 +73,13 @@ python3 "$VALIDATE" "$TMP/bad_prio.json" >/dev/null 2>&1 && bad "bad priority sh
 echo "[T4] execution model — prep mode stages, no recursion"
 if [ -f "$SAMPLE_TOR" ]; then
   OUT="$TMP/run"; mkdir -p "$OUT"
-  CLAUDECODE=1 /bin/bash "$RUN" --tor "$SAMPLE_TOR" --out "$OUT" >"$OUT/log.txt" 2>&1
+  # stub DS so the flows/screens prompts stage deterministically — without an explicit --ds,
+  # run_pipeline auto-resolves ../looloo-design-system, which exists only on a dev checkout, not in CI.
+  DS_STUB="$TMP/ds_stub"; mkdir -p "$DS_STUB/components"
+  printf '# stub DS\n' > "$DS_STUB/README.md"
+  printf 'export const Button = () => null\n' > "$DS_STUB/components/button.tsx"
+  printf '{"tokens":{}}\n' > "$DS_STUB/token-contract.json"
+  CLAUDECODE=1 /bin/bash "$RUN" --tor "$SAMPLE_TOR" --ds "$DS_STUB" --out "$OUT" >"$OUT/log.txt" 2>&1
   rc=$?
   [ "$rc" = "0" ] && ok "prep run exit 0" || bad "prep run exit $rc"
   [ -f "$OUT/.prompt_step1.txt" ] && [ -f "$OUT/.prompt_intel.txt" ] && [ -f "$OUT/.prompt_aesthetic.txt" ] && [ -f "$OUT/.prompt_flows.txt" ] && [ -f "$OUT/.prompt_step3.txt" ] && ok "step1 + 2.5 + 2.6 + flows + screens prompts staged" || bad "prompts not staged"
@@ -94,7 +100,7 @@ python3 - "$TMP/intel.json" <<'PY'
 import json, sys
 json.dump({
  "meta":{"source_brief":"brief.json","generated_at":"2026-06-12","schema_version":"1.0","overall_confidence":"medium","human_reviewed":False},
- "user_types":[{"id":"UT01","name":"Op","role_category":"operator","relationship":"primary","primary_surface":"console",
+ "user_types":[{"id":"UT01","name":"Op","role_category":"operator","relationship":"primary","primary_surface":"console","primary_device":"desktop",
    "expertise":{"domain":"expert","tool":"intermediate","usage_frequency":"daily","training_provided":"yes"},
    "source":"stated","evidence":["personas[0]"],"confidence":"high"}],
  "user_goals":[{"id":"G01","user_type_ref":"UT01","statement":"act safely and quickly","job_type":"functional","priority":"must","success_signal":"fewer errors","evidence":["TOR:objective"]}],
@@ -105,7 +111,7 @@ json.dump({
  "accessibility_needs":{"wcag_target":"AA_plus","default_floor":"WCAG 2.2 AA","specific_needs":[],"motion_sensitivity":False,"drivers":["clinical"]},
  "compliance_requirements":[{"id":"C01","name":"HIPAA","scope":"medical","source":"stated","mandatory":True,"ui_implications":["audit trail"],"confidence":"high"}],
  "decision_criticality":{"overall":"safety_critical","decision_points":[{"task_ref":"T01","stakes":"safety","who_bears_consequence":"user","info_completeness_need":"high","recommended_patterns":["double-confirm"]}]},
- "design_directives":{"density_target":3,"guidance_level":"expert","safeguard_level":"maximal","a11y_target":"AA_plus","mandatory_flows":["audit_log"],"navigation_model":"workspace","trust_emphasis":"high","rationale":"safety_critical + irreversible actions drive maximal safeguards and expert density","trade_offs":[{"decision":"confirmation friction","chose":"double-confirm on critical actions","over":"one-click speed","because":"error_tolerance is zero"}]},
+ "design_directives":{"density_target":3,"guidance_level":"expert","safeguard_level":"maximal","a11y_target":"AA_plus","mandatory_flows":["audit_log"],"navigation_model":"workspace","trust_emphasis":"high","responsive":{"target":"desktop","desktop_roles":["UT01"],"mobile_roles":[]},"rationale":"safety_critical + irreversible actions drive maximal safeguards and expert density","trade_offs":[{"decision":"confirmation friction","chose":"double-confirm on critical actions","over":"one-click speed","because":"error_tolerance is zero"}]},
  "open_questions":[]
 }, open(sys.argv[1],"w"))
 PY
@@ -124,6 +130,15 @@ python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directive
 python3 "$VALIDATE_INTEL" "$TMP/i_bad4.json" >/dev/null 2>&1 && bad "missing rationale should fail" || ok "design_directives.rationale required → exit 1"
 python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directives']['trade_offs']=[{'decision':'x'}];json.dump(d,open('$TMP/i_bad5.json','w'))"
 python3 "$VALIDATE_INTEL" "$TMP/i_bad5.json" >/dev/null 2>&1 && bad "incomplete trade_off should fail" || ok "trade_off needs decision/chose/over/because → exit 1"
+# track A — device dimension: a user_type must declare primary_device
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['user_types'][0].pop('primary_device');json.dump(d,open('$TMP/i_devA.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_devA.json" >/dev/null 2>&1 && bad "user_type without primary_device should fail" || ok "user_type.primary_device required → exit 1 (track A)"
+# track A — design_directives.responsive rollup is required
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directives'].pop('responsive');json.dump(d,open('$TMP/i_devB.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_devB.json" >/dev/null 2>&1 && bad "missing responsive rollup should fail" || ok "design_directives.responsive required → exit 1 (track A)"
+# track A — responsive.target must match the device mix (a desk+mobile mix ⇒ 'both')
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['user_types'].append({'id':'UT02','name':'Field','role_category':'operator','relationship':'secondary','primary_device':'mobile','expertise':{'domain':'novice','tool':'novice','usage_frequency':'weekly','training_provided':'no'},'source':'stated','evidence':['personas[1]'],'confidence':'high'});json.dump(d,open('$TMP/i_devC.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_devC.json" >/dev/null 2>&1 && bad "desk+mobile mix with target=desktop should fail" || ok "responsive.target must match device mix (⇒both) → exit 1 (track A)"
 # feature traceability (with brief): every Must feature must be served by a task/goal
 cat > "$TMP/brief_intel.json" <<'PY'
 {"meta":{"project_name":"x","generated_at":"n","source_file":"t"},"project_overview":{"objective":"o"},"target_users":[{"persona":"p"}],"core_features":[{"id":"F1","name":"Submit order","priority":"Must"},{"id":"F2","name":"History","priority":"Should"}],"user_flows":[],"constraints":{},"open_questions":[],"scoring_criteria":{}}
@@ -372,12 +387,22 @@ case "$AUD_OUT" in *"directive=FAIL"*) ok "audit_prototype runs gate 7 (directiv
 RT="$SCRIPTS_DIR/../references/runtime-audit/scripts"
 [ -f "$RT/audit_runtime.mjs" ] && [ -f "$RT/axe_audit.mjs" ] && [ -f "$RT/verify_states.mjs" ] && ok "runtime-audit scripts vendored" || bad "runtime-audit scripts missing"
 if command -v node >/dev/null 2>&1; then
-  for s in audit_runtime axe_audit verify_states verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
+  for s in audit_runtime axe_audit verify_states verify_structure verify_richness capture_screens verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
   echo '<!doctype html><html lang="en"><head><title>x</title></head><body><button>Go</button></body></html>' > "$TMP/rt.html"
   node "$RT/audit_runtime.mjs" "$TMP/rt.html" >/dev/null 2>&1 && ok "runtime audit skips cleanly w/o Playwright → exit 0" || bad "runtime audit should skip (exit 0) without Playwright"
+  # the new render structure gate (track E) must also degrade gracefully without Playwright
+  node "$RT/verify_structure.mjs" "$TMP/rt.html" 2>&1 | grep -q "SKIPPED" && ok "verify_structure skips cleanly w/o Playwright (track E)" || bad "verify_structure should print SKIPPED without Playwright"
+  # the anti-plain richness check (track I) is advisory + must degrade gracefully too
+  node "$RT/verify_richness.mjs" "$TMP/rt.html" 2>&1 | grep -q "SKIPPED" && ok "verify_richness skips cleanly w/o Playwright (track I)" || bad "verify_richness should print SKIPPED without Playwright"
 else
   ok "node absent — runtime-audit syntax/skip checks N/A"
 fi
+# gate 12 (render) wired into audit_prototype AND held outside --strict (decision D0): a prototype with
+# no out/ build reports render as skipped (—), and --strict must NOT flip that skip into a FAIL.
+R12="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA 2>&1)"
+case "$R12" in *"render="*) ok "audit_prototype reports gate 12 (render=)";; *) bad "gate 12 not wired into audit_prototype";; esac
+R12S="$(python3 "$SCRIPTS_DIR/audit_prototype.py" "$PROTO" --a11y AA --strict 2>&1)"
+case "$R12S" in *"render=—"*) ok "render gate stays — under --strict (never blocks w/o a build, D0)";; *) bad "render should be — (skipped) under --strict, not FAIL";; esac
 
 # ── T11. Folded skills — DTCG token foundation gates (brandkit) ───────────────
 echo "[T11] brandkit/DTCG gates + folded-skill assets present"
@@ -486,7 +511,7 @@ python3 -c "import json,sys; m=json.load(open('$TMP/fb/manifest.json')); sys.exi
 echo "[T15] validate_critique — judge verdict caps the self-score"
 VC="$SCRIPTS_DIR/validate_critique.py"
 _crit() { printf '%s' "$1" > "$TMP/crit.json"; }
-GOOD_SCREENS='"screens":[{"name":"Booking","score":7.5,"dimensions":{"hierarchy":8,"consistency":8,"a11y":7,"usability":7,"responsiveness":7,"performance":7}}]'
+GOOD_SCREENS='"screens":[{"name":"Booking","score":7.5,"dimensions":{"hierarchy":8,"consistency":8,"a11y":7,"usability":7,"responsiveness":7,"performance":7,"richness":7}}]'
 # valid, judge passes
 _crit "{\"judge_verdict\":true,\"overall_score\":7.4,$GOOD_SCREENS,\"what_worked\":[\"clear primary action\"]}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && ok "valid critique (judge pass) → exit 0" || bad "valid critique rejected"
@@ -503,8 +528,17 @@ python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "judge=false without judge
 _crit "{\"overall_score\":7.4,$GOOD_SCREENS}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "missing judge_verdict not blocked" || ok "missing judge_verdict → blocked"
 # out-of-range dimension score → block
-_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":11,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7}}]}"
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":11,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7,\"richness\":7}}]}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "dimension score 11 not blocked" || ok "dimension score out of 1..10 → blocked"
+# track J: the richness dimension is now required — a critique missing it must block
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":8,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7}}]}"
+python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "critique without a richness score not blocked" || ok "missing richness dimension → blocked (track J)"
+# track F: `screenshots` if present must be a list (the rendered evidence set); a non-list blocks
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screenshots\":\"one.png\",$GOOD_SCREENS}"
+python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "non-list screenshots not blocked" || ok "screenshots must be a list → blocked (track F)"
+# a critique that cites its screenshot set is valid (no evidence nudge)
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screenshots\":[\"s/x-mobile.png\"],$GOOD_SCREENS,\"what_worked\":[\"x\"]}"
+python3 "$VC" "$TMP/crit.json" 2>&1 | grep -q "no .screenshots." && bad "screenshots cited but nudge still fired" || ok "screenshots cited → no evidence nudge (track F)"
 
 # ── T16. validate_edgecases — front edge-case spine (Step 3.7) ────────────────
 echo "[T16] validate_edgecases — traceability + directive floors"
@@ -680,6 +714,97 @@ python3 "$LAF" "$TMP/axes_import.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && ok
 # package @import only (DS base, no local axes) → still blocked (no leak)
 printf '@import "@npsin-oreo/design-system/styles.css";\n' > "$TMP/axes_pkgonly.css"
 python3 "$LAF" "$TMP/axes_pkgonly.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && bad "package @import must not satisfy axes" || ok "package @import not followed → axes still blocked (gate 11)"
+
+# ── T21. layout axis (fix B) — validate_aesthetic invariants (B2) + gate 11 tokens (B3) ──
+echo "[T21] layout axis — validate_aesthetic invariants (B2) + gate 11 tokens (B3)"
+# reuse the valid $TMP/aesthetic.json (direction.name=linear-app); attach the required 6 axes + a
+# directive-derived layout axis whose resolved block we vary.
+_layout() {  # $1 = python literal for layout.resolved, or None to omit resolved
+  python3 -c "
+import json
+d=json.load(open('$TMP/aesthetic.json'))
+d['primary_system']='linear-app'
+six={ax:{'source':'linear-app','rationale':'fits'} for ax in ['color','typography','shape','elevation','spacing','motion']}
+lay={'source':'intelligence','rationale':'fits'}
+res=$1
+if res is not None: lay['resolved']=res
+six['layout']=lay
+d['axes']=six
+json.dump(d,open('$TMP/aes_layout.json','w'))"
+}
+GOOD="{'grid_cols':{'sm':4,'md':8,'lg':12},'gutter':'1.5rem','container_max':{'content':'80rem','prose':'48rem'},'control_h':{'mobile':'3rem','desktop':'2.5rem'},'touch_min':'2.75rem'}"
+# B2.1 valid layout axis → exit 0 (and back-compat: the 6 required axes still validate alongside it)
+_layout "$GOOD"
+python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "valid layout axis (7th, directive-derived) → exit 0" || bad "valid layout axis rejected"
+# B2.2 touch_min (2.75rem) > control_h.mobile (2.5rem) → block (a tap target can't exceed its control)
+_layout "{'grid_cols':{'sm':4,'md':8,'lg':12},'gutter':'1.5rem','control_h':{'mobile':'2.5rem','desktop':'2.5rem'},'touch_min':'2.75rem'}"
+OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "touch_min" && ok "touch_min > control_h.mobile → blocked (invariant)" || bad "touch/control invariant not enforced"
+# B2.3 grid_cols not non-decreasing (12/8/4) → block
+_layout "{'grid_cols':{'sm':12,'md':8,'lg':4},'gutter':'1.5rem','control_h':{'mobile':'3rem','desktop':'2.5rem'},'touch_min':'2.75rem'}"
+OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "non-decreasing" && ok "grid_cols must be non-decreasing sm<=md<=lg → blocked" || bad "grid ordering not enforced"
+# B2.4 layout present but resolved missing → block (the whole point of the axis)
+_layout None
+OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "resolved is required" && ok "layout without resolved → blocked" || bad "missing resolved not blocked"
+# B3 — gate 11: the committed layout tokens must actually land in globals.css @theme (else silent no-op)
+cat > "$TMP/layout_aes.json" <<'JSON'
+{"axes":{"layout":{"resolved":{"gutter":"1.5rem","container_max":{"content":"80rem"},"control_h":{"mobile":"3rem","desktop":"2.5rem"},"touch_min":"2.75rem"}}}}
+JSON
+cat > "$TMP/layout_ok.css" <<'CSS'
+@theme { --spacing-gutter: 1.5rem; --container-content: 80rem; --control-h-mobile: 3rem; --control-h-desktop: 2.5rem; --touch-min: 2.75rem; }
+CSS
+python3 "$LAF" "$TMP/layout_ok.css" "$TMP/layout_aes.json" >/dev/null 2>&1 && ok "layout tokens applied in @theme → exit 0 (gate 11)" || bad "applied layout tokens wrongly blocked"
+# drift: committed gutter 1.5rem but the build shipped 1rem → the no-op gate 11 exists to catch
+sed 's/--spacing-gutter: 1.5rem/--spacing-gutter: 1rem/' "$TMP/layout_ok.css" > "$TMP/layout_drift.css"
+OUT="$(python3 "$LAF" "$TMP/layout_drift.css" "$TMP/layout_aes.json" 2>&1)"; echo "$OUT" | grep -q "spacing-gutter" && ok "layout token drift (declared 1.5rem, built 1rem) → blocked (gate 11)" || bad "layout token drift not blocked"
+# grid_cols is a component prop, not a CSS token → it must NOT be required in globals.css
+cat > "$TMP/layout_gridonly_aes.json" <<'JSON'
+{"axes":{"layout":{"resolved":{"grid_cols":{"sm":4,"md":8,"lg":12},"gutter":"1.5rem"}}}}
+JSON
+printf '@theme { --spacing-gutter: 1.5rem; }\n' > "$TMP/layout_grid.css"
+python3 "$LAF" "$TMP/layout_grid.css" "$TMP/layout_gridonly_aes.json" >/dev/null 2>&1 && ok "grid_cols not treated as a token (component prop) → exit 0" || bad "grid_cols wrongly required as a CSS token"
+
+# ── T21b. usage directives (track H) — validate_aesthetic richness intent ─────
+echo "[T21b] usage directives (track H) — how-to-apply-identity block"
+_usage() {  # $1 = python literal for d['usage'] (or 'None' to omit)
+  python3 -c "
+import json
+d=json.load(open('$TMP/aesthetic.json'))
+u=$1
+if u is None: d.pop('usage', None)
+else: d['usage']=u
+json.dump(d,open('$TMP/aes_usage.json','w'))"
+}
+UGOOD="{'surfaces':{'tinted':['card','muted'],'rule':'cards on a tinted panel'},'elevation':{'tiers':['flat','raised'],'rule':'raised for tappable'},'accent':{'slots':['primary-cta'],'rule':'accent on the one primary action'},'hero':{'rule':'each screen has one focal moment'},'empty_states':{'rule':'value plus action, never blank'}}"
+# H.1 valid usage block → exit 0
+_usage "$UGOOD"
+python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "valid usage block → exit 0" || bad "valid usage block rejected"
+# H.2 surfaces.tinted empty (the flat-white regression) → block
+_usage "{'surfaces':{'tinted':[],'rule':'x'},'elevation':{'tiers':['flat','raised'],'rule':'x'},'accent':{'slots':['primary-cta'],'rule':'x'},'hero':{'rule':'x'},'empty_states':{'rule':'x'}}"
+OUT="$(python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "tinted" && ok "usage.surfaces.tinted empty → blocked (anti-flat)" || bad "empty tinted surfaces not blocked"
+# H.3 a required rule missing → block
+_usage "{'surfaces':{'tinted':['card'],'rule':'x'},'elevation':{'tiers':['flat','raised'],'rule':'x'},'accent':{'slots':['primary-cta'],'rule':'x'},'hero':{},'empty_states':{'rule':'x'}}"
+OUT="$(python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "hero.rule is required" && ok "usage.hero.rule missing → blocked" || bad "missing usage rule not blocked"
+# H.4 no usage block → still valid (advisory nudge, back-compat)
+_usage None
+python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "no usage block → exit 0 (warns, back-compat)" || bad "missing usage should warn, not block"
+
+# ── T21c. component contracts — DS gotchas (track D, gate 4) ─────────────────
+echo "[T21c] lint_component_contracts — DS gotchas (track D)"
+LCC="$SCRIPTS_DIR/lint_component_contracts.py"
+# NativeSelect className height no-ops (routes to wrapper) → hard block
+printf 'export function F(){return <NativeSelect className="h-12 w-full"><option>A</option></NativeSelect>}\n' > "$TMP/d_ns.tsx"
+python3 "$LCC" "$TMP/d_ns.tsx" >/dev/null 2>&1 && bad "h-* on NativeSelect should block" || ok "NativeSelect className height no-op → blocked (gate 4, track D)"
+# no height on NativeSelect → clean
+printf 'export function F(){return <NativeSelect className="w-full"><option>A</option></NativeSelect>}\n' > "$TMP/d_ns_ok.tsx"
+python3 "$LCC" "$TMP/d_ns_ok.tsx" >/dev/null 2>&1 && ok "NativeSelect without a height → exit 0" || bad "clean NativeSelect wrongly blocked"
+# disabled modal trigger → advisory (never blocks), but is reported
+OUT="$(printf 'export function F(){return <AlertDialogTrigger asChild><button disabled>Go</button></AlertDialogTrigger>}\n' > "$TMP/d_tr.tsx"; python3 "$LCC" "$TMP/d_tr.tsx" 2>&1)"
+echo "$OUT" | grep -q "disabled trigger\|disabled control" && ok "disabled modal trigger → advisory reported (track D)" || bad "disabled trigger not reported"
+printf 'export function F(){return <AlertDialogTrigger asChild><button disabled>Go</button></AlertDialogTrigger>}\n' > "$TMP/d_tr.tsx"
+python3 "$LCC" "$TMP/d_tr.tsx" >/dev/null 2>&1 && ok "disabled trigger is advisory only → exit 0 (no block)" || bad "advisory should not block"
+# ds-allow-contract escape hatch on the NativeSelect line
+printf 'export function F(){return <NativeSelect className="h-12" /> /* ds-allow-contract */}\n' > "$TMP/d_allow.tsx"
+python3 "$LCC" "$TMP/d_allow.tsx" >/dev/null 2>&1 && ok "ds-allow-contract escapes the NativeSelect rule → exit 0" || bad "ds-allow-contract not honored"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

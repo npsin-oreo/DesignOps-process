@@ -106,6 +106,120 @@ def _load(path):
         return None, f"file not found: {path}"
 
 
+# ── layout axis (optional 7th axis, directive-derived) ─────────────────────────
+# grid / gutter / container / control-height / touch tokens that fix C scaffolds and gate 11 (fix B3)
+# verifies. Validated only when axes.layout is present; outside the coherence source-count (D1).
+LAYOUT_BREAKPOINTS = ("sm", "md", "lg")
+
+
+def _rem(v):
+    """A CSS length like '2.75rem' → 2.75 (float), or None if it isn't a plain rem value."""
+    if not isinstance(v, str):
+        return None
+    s = v.strip().lower()
+    if s.endswith("rem"):
+        try:
+            return float(s[:-3])
+        except ValueError:
+            return None
+    return None
+
+
+def _validate_layout_axis(layout, errors, warnings):
+    """Structure + internal-consistency checks for axes.layout (only runs when the axis is present)."""
+    if not isinstance(layout, dict):
+        errors.append("axes.layout must be an object {source, rationale, resolved} when present")
+        return
+    if not layout.get("rationale"):
+        warnings.append("axes.layout.rationale is empty — say why this layout fits the density/device profile")
+    res = layout.get("resolved")
+    if not isinstance(res, dict):
+        errors.append("axes.layout.resolved is required (the grid/gutter/control tokens fix C scaffolds and "
+                      "gate 11 verifies) — give it grid_cols / gutter / container_max / control_h / touch_min")
+        return
+
+    # grid_cols: three integer breakpoints, non-decreasing (a wider viewport never has fewer columns)
+    gc = res.get("grid_cols")
+    if not isinstance(gc, dict):
+        errors.append("axes.layout.resolved.grid_cols is required — {sm, md, lg} column counts")
+    else:
+        vals = {}
+        for bp in LAYOUT_BREAKPOINTS:
+            n = gc.get(bp)
+            if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+                errors.append(f"axes.layout.resolved.grid_cols.{bp} must be a positive integer, got {n!r}")
+            else:
+                vals[bp] = n
+        if len(vals) == 3 and not (vals["sm"] <= vals["md"] <= vals["lg"]):
+            errors.append(f"axes.layout.resolved.grid_cols must be non-decreasing sm<=md<=lg "
+                          f"(got {vals['sm']}/{vals['md']}/{vals['lg']}) — a wider breakpoint can't have fewer columns")
+
+    # gutter — required, a rem length (so it lands in @theme without tripping gate 1)
+    if not res.get("gutter"):
+        errors.append("axes.layout.resolved.gutter is required (grid/stack gap → --spacing-gutter)")
+    elif _rem(res["gutter"]) is None:
+        warnings.append(f"axes.layout.resolved.gutter {res['gutter']!r} is not a rem value — use rem "
+                        "(not px) so it lands in @theme without tripping gate 1 (no raw px)")
+
+    # container_max — recommended (page + reading widths)
+    cm = res.get("container_max")
+    if not isinstance(cm, dict) or not cm.get("content"):
+        warnings.append("axes.layout.resolved.container_max.content recommended (page max-width → --container-content)")
+
+    # control_h.{mobile,desktop} + touch_min — the parity contract, invariant-checked
+    ch = res.get("control_h")
+    if not isinstance(ch, dict) or not ch.get("mobile") or not ch.get("desktop"):
+        errors.append("axes.layout.resolved.control_h is required — {mobile, desktop} heights "
+                      "(fix C pins every form control to these)")
+        ch = ch if isinstance(ch, dict) else {}
+    tm = res.get("touch_min")
+    if not tm:
+        errors.append("axes.layout.resolved.touch_min is required (minimum tap target → --touch-min)")
+
+    # invariant: touch_min <= control_h.mobile (a tap target can't exceed the control it lives on)
+    tm_v, chm_v = _rem(tm), _rem(ch.get("mobile"))
+    if tm_v is not None and chm_v is not None and tm_v > chm_v:
+        errors.append(f"axes.layout.resolved: touch_min ({tm}) > control_h.mobile ({ch.get('mobile')}) — the "
+                      "mobile control must be at least the tap-target floor (raise control_h.mobile or lower touch_min)")
+
+
+# ── usage directives (optional `usage` block, track H) ─────────────────────────
+# The identity token SET (colours/type) is necessary but not sufficient — a build can apply every
+# token faithfully (gate 6 green) and still read "flat, the brand colour on a neutral skeleton",
+# because token values don't say HOW to compose them. The `usage` block records the composition
+# intent: which surfaces carry a tint, how many elevation tiers, where the accent lands, the hero
+# moment, and that empty states carry content. It gives the render-based anti-plain check (track I)
+# and the critique richness dimension (track J) something declared to check against.
+USAGE_KEYS = ("surfaces", "elevation", "accent", "hero", "empty_states")
+
+
+def _validate_usage(usage, errors, warnings):
+    """Structure checks for the optional `usage` block (only runs when present)."""
+    if not isinstance(usage, dict):
+        errors.append("usage must be an object {surfaces, elevation, accent, hero, empty_states} when present")
+        return
+    for k in USAGE_KEYS:
+        node = usage.get(k)
+        if not isinstance(node, dict):
+            errors.append(f"usage.{k} is required when usage is present — give it at least a non-empty 'rule'")
+            continue
+        if not (node.get("rule") or "").strip():
+            errors.append(f"usage.{k}.rule is required — say HOW to apply it, not just that it exists")
+    # richness has teeth only if the declarations are concrete, not empty scaffolding:
+    surfaces = usage.get("surfaces") or {}
+    if isinstance(surfaces, dict) and not (surfaces.get("tinted") or []):
+        errors.append("usage.surfaces.tinted must list ≥1 tinted surface (card/muted/accent) — a flat "
+                      "white-on-white build is exactly the 'plain' regression this block exists to prevent")
+    accent = usage.get("accent") or {}
+    if isinstance(accent, dict) and not (accent.get("slots") or []):
+        errors.append("usage.accent.slots must name ≥1 slot where the accent lands (primary-cta/active-nav/…) "
+                      "— an unused accent is an unused identity")
+    elev = usage.get("elevation") or {}
+    if isinstance(elev, dict) and len(elev.get("tiers") or []) < 2:
+        warnings.append("usage.elevation.tiers has <2 tiers — an elevation hierarchy needs at least "
+                        "two levels (e.g. flat + raised) to read as depth")
+
+
 def validate(aesthetic_path, intel_path=None, contract_path=None):
     errors, warnings = [], []
     d, err = _load(aesthetic_path)
@@ -209,6 +323,9 @@ def validate(aesthetic_path, intel_path=None, contract_path=None):
                 errors.append(f"axes span {len(distinct)} systems {sorted(distinct)} — cap is {MAX_AXIS_SOURCES} "
                               "for coherence (one primary backbone + at most one justified override). "
                               "Design languages are coherent wholes; mixing many produces a Frankenstein.")
+            # optional 7th axis: layout (grid/gutter/control-height) — structure + invariant checks (D1)
+            if "layout" in axes:
+                _validate_layout_axis(axes.get("layout"), errors, warnings)
 
     # ── tokens: the full identity color set (light + dark), not just primary ───────
     tok = d["tokens"]
@@ -258,6 +375,16 @@ def validate(aesthetic_path, intel_path=None, contract_path=None):
         for k, v in sig.items():
             if k in SIGNATURE_ENUMS and v not in SIGNATURE_ENUMS[k]:
                 errors.append(f"signature.{k} must be one of {sorted(SIGNATURE_ENUMS[k])} (got {v!r})")
+
+    # ── usage directives (optional, track H): HOW to apply the identity richly ────
+    usage = d.get("usage")
+    if usage is not None:
+        _validate_usage(usage, errors, warnings)
+    else:
+        warnings.append("no `usage` block — the theme carries token VALUES but no directives for "
+                        "applying them richly (tinted surfaces / elevation / accent placement / hero / "
+                        "empty-state content). Gate 6 will pass a flat 'brand colour on a neutral "
+                        "skeleton'; add `usage` (track H) to give the anti-plain checks something to enforce")
 
     # ── constraints must echo the upstream directives ─────────────────────────────
     cons = d["constraints"]
@@ -398,6 +525,17 @@ def main():
         srcs = sorted({(axes.get(ax) or {}).get("source") for ax in axes} - {None})
         print(f"  Axes       : {comp}")
         print(f"  Composition: {len(srcs)} system(s) {srcs} (primary {d.get('primary_system') or dir_.get('name')})")
+        lay = (axes.get("layout") or {}).get("resolved")
+        if isinstance(lay, dict):
+            gc, ch = lay.get("grid_cols") or {}, lay.get("control_h") or {}
+            print(f"  Layout     : grid {gc.get('sm')}/{gc.get('md')}/{gc.get('lg')} · gutter {lay.get('gutter')} · "
+                  f"control {ch.get('mobile')}/{ch.get('desktop')} · touch {lay.get('touch_min')}")
+    usage = d.get("usage")
+    if isinstance(usage, dict):
+        s = (usage.get("surfaces") or {}).get("tinted") or []
+        a = (usage.get("accent") or {}).get("slots") or []
+        print(f"  Usage      : tinted surfaces {s} · accent slots {a} · "
+              f"{len([k for k in USAGE_KEYS if usage.get(k)])} /{len(USAGE_KEYS)} directives")
     print(f"  a11y target: {d.get('constraints', {}).get('a11y_target')} · "
           f"contrast pairs verified: {len(d.get('contrast_checks', []))}")
     for w in warnings:

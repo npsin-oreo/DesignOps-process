@@ -44,6 +44,7 @@ SAFEGUARD    = {"minimal", "standard", "strict", "maximal"}
 NAV_MODEL    = {"single", "wizard", "hub_spoke", "workspace"}
 TRUST        = {"low", "medium", "high"}
 IMPACT       = {"blocker", "important", "nice_to_know"}
+DEVICE       = {"desktop", "mobile", "both"}   # track A — a user_type's primary device
 
 # brief signals that imply regulatory exposure / dense data
 SENSITIVE_DATA_HINTS = ("health", "medical", "patient", "financial", "payment", "bank",
@@ -94,6 +95,7 @@ def validate(intel_path, brief_path=None):
 
     # ── A. user_types (+ nested expertise) ──────────────────────────────────────
     ut_ids, novice_domains, has_power_novice = set(), [], False
+    devices_by_id = {}   # track A — {user_type id: primary_device} for the responsive rollup cross-check
     uts = d["user_types"]
     if not isinstance(uts, list) or not uts:
         errors.append("user_types must have at least 1 entry")
@@ -121,6 +123,15 @@ def validate(intel_path, brief_path=None):
             novice_domains.append(ex.get("domain") == "novice")
             if ex.get("usage_frequency") == "power" and ex.get("domain") == "novice":
                 has_power_novice = True
+            # track A — each user_type declares its primary device (root cause #1: a build went
+            # mobile-only because device was never captured). "evidence or silence" doesn't apply —
+            # a device is always knowable, so it is required.
+            dev = u.get("primary_device")
+            if dev not in DEVICE:
+                errors.append(f"user_types[{i}].primary_device must be one of {sorted(DEVICE)} "
+                              f"(got {dev!r}) — declare the device so the responsive target is derivable")
+            elif uid:
+                devices_by_id[uid] = dev
 
     # ── user_goals ──────────────────────────────────────────────────────────────
     goal_ids = set()
@@ -238,6 +249,34 @@ def validate(intel_path, brief_path=None):
     _enum(dz.get("a11y_target"), WCAG, "design_directives.a11y_target", errors)
     _enum(dz.get("navigation_model"), NAV_MODEL, "design_directives.navigation_model", errors)
     _enum(dz.get("trust_emphasis"), TRUST, "design_directives.trust_emphasis", errors)
+
+    # ── responsive rollup (track A) — which roles are desktop vs mobile ──────────
+    # Rolls the per-user primary_device up into a target the aesthetic layout axis + the render
+    # phone-lock gate consume. Required so responsive intent survives TOR → build (root cause #1).
+    resp = dz.get("responsive")
+    if not isinstance(resp, dict):
+        errors.append("design_directives.responsive is required — {target, desktop_roles[], mobile_roles[]} "
+                      "rolling up each user_type's primary_device (a mobile-only build is the default failure)")
+    else:
+        _enum(resp.get("target"), DEVICE, "design_directives.responsive.target", errors)
+        for key in ("desktop_roles", "mobile_roles"):
+            lst = resp.get(key, [])
+            if not isinstance(lst, list):
+                errors.append(f"design_directives.responsive.{key} must be a list of user_type ids")
+                continue
+            for rid in lst:
+                if devices_by_id and rid not in devices_by_id:
+                    errors.append(f"design_directives.responsive.{key} '{rid}' is not a user_types id")
+        # consistency: the target must reflect the actual device mix across user_types
+        if devices_by_id:
+            devs = set(devices_by_id.values())
+            mobile = {"mobile", "both"} & devs
+            desktop = {"desktop", "both"} & devs
+            expected = "both" if (mobile and desktop) or "both" in devs else next(iter(devs))
+            if resp.get("target") in DEVICE and resp.get("target") != expected:
+                errors.append(f"design_directives.responsive.target '{resp.get('target')}' contradicts the "
+                              f"user_types device mix {sorted(devs)} — expected '{expected}' "
+                              "(desk + mobile roles ⇒ 'both'; a build must serve every role's device)")
 
     # reasoning trace — makes the strategy auditable ("Reasoning System", not generator).
     # rationale = why these directives follow from the dimensions; trade_offs = decisions made.

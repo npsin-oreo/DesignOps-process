@@ -105,6 +105,13 @@ function FeatureSkeleton() {
 > and document numbers). The examples below use English placeholders — swap them for the
 > project's actual locale.
 
+> **Demo-prefill (track G):** forms open with **valid seed defaults**, never blank. A POC exists to
+> be walked through — if a form starts empty and the submit/confirm is disabled until it validates,
+> the gated action (and any confirm dialog behind it) is unreachable in a demo and invisible to the
+> render gate. Seed every field with a realistic default so the primary action is enabled on load and
+> each confirm is one click away. To express "not ready", guard the action **inside** the dialog — do
+> not disable the modal **trigger** (a disabled trigger never opens; gate 4 flags it).
+
 ### Pattern 1: Static Array (most common)
 
 ```ts

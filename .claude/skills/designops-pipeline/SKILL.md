@@ -17,8 +17,8 @@ description: >
   Step 3.7 (Edge-Case Analysis → edge-cases.json) enumerates the non-happy-path conditions every Must
   screen must survive, via UI Stack × CORRECT, severity driven by the Step 2.5 directives.
   Step 4 builds a POC prototype from a ready-made component library + mock data, Step 4.6 runs a
-  scored critique (6 weighted dimensions + Nielsen + anti-slop + a separate judge pass), Step 4.7 is a runnable audit gate
-  (audit_prototype.py — 11 gates: tokens + WCAG contrast in light/dark + no-emoji + component contracts + no remote-font @import + theme fidelity + directive fidelity + screen coverage + edge-case coverage + font fidelity + axis fidelity) before handoff.
+  scored critique (7 weighted dimensions incl. richness/identity + Nielsen + anti-slop + a separate judge pass), Step 4.7 is a runnable audit gate
+  (audit_prototype.py — 11 static gates: tokens + WCAG contrast in light/dark + no-emoji + component contracts + no remote-font @import + theme fidelity + directive fidelity + screen coverage + edge-case coverage + font fidelity + axis fidelity — plus an optional render gate 12: structure/control-parity, needs a build + Playwright) before handoff.
   UX layers feed the pipeline: Step 2.3 (User Research → research.json: personas/JTBD/pains) and
   Step 2.4 (Competitive Analysis → competitive.json) supply evidence to Step 2.5; Step 4.8
   (Usability Test → usability.json: heuristic + automated + simulated persona walkthrough) runs on
@@ -86,7 +86,7 @@ TOR (PDF / DOCX / Notion / GDocs)
               └────────────────────────────────┘
                                │
                                ▼  Step 4.6  critique (4-layer + judge) → fix
-                               ▼  Step 4.7  audit gate (11 gates: token + WCAG + … + font + axis fidelity)
+                               ▼  Step 4.7  audit gate (11 static gates + optional render gate 12: control parity/surface)
                                │            🔴 critical = block handoff
                                ▼  Step 5 (separate pipeline)
               ┌────────────────────────────────┐
@@ -893,7 +893,14 @@ After generating, log:
 
 After generating the prototype, run a **scored review** of every main screen:
 
-1. Score the **6 weighted dimensions** (Visual Hierarchy 20 · Consistency 20 · Accessibility 20 · Usability 20 · Responsiveness 10 · Performance 10) → compute the overall (≤6 = rework before ship).
+> **Score from the render, not the code (track F).** Before scoring, capture each built screen at
+> mobile + desktop with `references/runtime-audit/scripts/capture_screens.mjs` and cite the written
+> PNG set in `critique.json` `screenshots`. The judge scored PARICH draft-1 an 8.1 blind (from source
+> + screen-inventory), missing the cramped column and flat surfaces a screenshot makes obvious — the
+> richness + responsiveness dimensions must be read off the actual render. `validate_critique.py`
+> nudges when `screenshots` is absent.
+
+1. Score the **7 weighted dimensions** (Visual Hierarchy 20 · Consistency 15 · Accessibility 20 · Usability 15 · Responsiveness 10 · Performance 10 · **Richness/identity 10**) → compute the overall (≤6 = rework before ship). Richness is scored from what RENDERS against `aesthetic.json`'s `usage` block (track H) — a flat "brand colour on a neutral skeleton" scores low even when tokens are applied.
 2. Run **Nielsen's 10 heuristics**; flag each violation by number (H1…H10).
 3. Run the **anti-slop gate** (`aesthetics/taste/design-taste.md` Banned Defaults): pure `#000/#fff`, identical equal-weight cards, everything centered, rainbow accents, emoji-as-icons, colored left-border strips, em-dash/marketing-filler copy → each is a **Major** finding. The screen must earn `aesthetic.json`'s `mood_adjective`.
 4. The detailed 4-layer checklist (hierarchy / IA / consistency / context-fit, tied to `design_directives`) is in `critique-framework.md` — use it to find the specifics.
@@ -966,7 +973,7 @@ Audit the prototype across 3 categories (see the severity matrix in the referenc
 
 > `audit_prototype.py` also runs a **UX-copy gate** (gate 3, via `references/ux-writing/scripts/check_no_emoji.py`): no emoji and no em/en-dash in product UI → 🔴 block. Full copy rules: `references/ux-writing/voice-tone.md`.
 
-> …and a **component-contract gate** (gate 4, via `scripts/lint_component_contracts.py`): enforces the Button/Dialog/Field usage contracts from `references/component-contracts.md` as runnable a11y checks — icon-only buttons need an accessible name, every `DialogContent`/`AlertDialogContent` needs a `DialogTitle`, every `Input` with an `id` needs a matching `FieldLabel htmlFor` → 🔴 block. Fuzzier rules (one-primary-per-view, missing `DialogDescription`, destructive-variant, `aria-invalid` on errored fields) print as **advisories** and never fail the gate. Escape a justified case with a `ds-allow-contract` comment.
+> …and a **component-contract gate** (gate 4, via `scripts/lint_component_contracts.py`): enforces the Button/Dialog/Field usage contracts from `references/component-contracts.md` as runnable a11y checks — icon-only buttons need an accessible name, every `DialogContent`/`AlertDialogContent` needs a `DialogTitle`, every `Input` with an `id` needs a matching `FieldLabel htmlFor` → 🔴 block. Fuzzier rules (one-primary-per-view, missing `DialogDescription`, destructive-variant, `aria-invalid` on errored fields) print as **advisories** and never fail the gate. It also enforces the **DS gotchas** in `references/component-notes.json` (track D): a height utility on `<NativeSelect className>` 🔴 blocks (it routes to the wrapper — the inner `<select>` stays `h-8` and the height silently no-ops; set it via the `[data-slot=native-select]` rule the scaffold ships), and a disabled control inside an `AlertDialogTrigger`/`DialogTrigger` is an advisory (a disabled trigger never opens the dialog). Escape a justified case with a `ds-allow-contract` comment.
 
 > …and a **font-loading gate** (gate 5, via `scripts/lint_font_imports.py`): a remote-font CSS `@import` (`fonts.googleapis.com` etc.) in `globals.css` → 🔴 block — it 500s the Turbopack dev server; load fonts with `next/font` instead.
 
@@ -979,6 +986,8 @@ Audit the prototype across 3 categories (see the severity matrix in the referenc
 > …**font fidelity** (gate 10, `scripts/lint_font_fidelity.py`) closes the typography half of the Step 2.6 bridge. Gate 6 verifies the committed *colours* are applied; gate 10 verifies the committed **`font_sans`** is too. It reads `brand.config.json` (or `aesthetic.json`), extracts the primary family (e.g. `Inter` from `"Inter", "Noto Sans Thai", …`), and FAILS when neither `app/layout.*` nor `globals.css` references it — i.e. the scaffold kept its default loader (Geist) and the font directive silently no-opped. (Gate 5 only forbids a remote `@import`; gate 6 only checks colours — nothing else caught this, and for a Thai TOR committing `Noto Sans Thai` it is a real regression.) Load the committed family via `next/font` and wire `--font-sans`. Auto-discovers the theme beside the prototype (or `--theme`); skips cleanly when no `font_sans` is committed.
 
 > …**axis fidelity** (gate 11, `scripts/lint_axis_fidelity.py`) extends the same idea to the **non-colour axes**. Step 2.6's `axes` block resolves a system on six facets (color · typography · shape · elevation · spacing · motion); gates 6/10 cover colour + font, gate 11 covers the rest's machine-readable `resolved` metrics. It reads `aesthetic.json` and FAILS when a declared metric isn't in the built `globals.css`: `typography.resolved.base_line_height` / `heading_weight_cap` (the type ramp re-pointed via `@theme --text-*` and a heading weight rule), `shape.resolved.pill_slots[]` (a brand-scoped `[data-slot=…]{ @apply rounded-full }`), `motion.resolved.easing` (defined as a CSS var AND applied to a non-card slot). This catches the "declared but not applied" no-op — the same class as the font bug — for type/shape/motion. **The two bridge techniques it expects are no-hardcode-safe:** re-point Tailwind's `@theme` (sizes in `rem`, line-heights unitless, tracking in `em`) so existing `text-*` utilities inherit the brand without editing JSX, and brand-scoped `[data-slot=*]` rules (`@apply` utility classes + CSS vars, never raw `px`/`ms`) so component specs land without editing `components/ui`. Auto-discovers `aesthetic.json` beside the prototype (or `--aesthetic`); skips cleanly when there's no `axes` block.
+
+> …**render structure** (gate 12, `references/runtime-audit/scripts/verify_structure.mjs`, via the Step 4.7b orchestrator) is the one **runtime** gate folded into the report — the answer to the "clean but plain" first-draft gap. Gates 1-11 read source/CSS; they cannot see that a `NativeSelect` renders a 32px inner `<select>` next to a 48px input (its `className` routes to the wrapper), that a desktop-role screen is locked to phone width, or that the canvas colour changes by breakpoint — all of which green-passed on the PARICH WMS draft. This gate **renders** the built page (Playwright) at mobile+desktop and checks **control-height parity** within each form, **surface consistency** across breakpoints, and **phone-lock** (advisory unless `--desktop-role`). It closes the loop on the C1/C2 scaffold (grid + control-parity `[data-slot]` rules) — the gate that actually *sees* they took effect. Because it needs a build (`out/`) + Playwright + the runtime scripts copied into the prototype, it is **RENDER-OPTIONAL: always evaluated outside `--strict`** — a skip never blocks (even in strict mode), only a real render failure blocks (decision D0). Enable per `references/runtime-audit/README.md`.
 
 > **a11y target** comes from `intelligence.json` → `design_directives.a11y_target` (Step 2.5 already enforced the floor + public-sector ⇒ AAA invariant). Pass it straight to `--a11y` (the script maps `AA_plus`→AAA).
 

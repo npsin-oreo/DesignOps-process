@@ -14,11 +14,21 @@ without it, every gate prints `SKIPPED` and the run exits 0 (never blocks the de
 |------|------|---------|---------|
 | **axe** | `axe_audit.mjs` | axe-core WCAG 2.x A/AA: button/link names, image alt, `lang`, `<title>`, ARIA roles, label associations, landmarks, heading order | 🔴 yes |
 | **states** | `verify_states.mjs` | text/bg contrast in **default + hover + focus** (a button that turns the wrong color on hover) | 🔴 yes |
+| **structure** | `verify_structure.mjs` | render at mobile+desktop: **control-height parity** within a form (the 32px select next to a 48px input — the NativeSelect className→wrapper bug), **surface consistency** across breakpoints, **phone-lock** (content capped to phone width on desktop — advisory unless `--desktop-role`) | 🔴 yes (phone-lock advisory) |
 | **focus-trap** | `verify_focustrap.mjs` | modal traps Tab, has `role=dialog`+`aria-modal`+name, Esc returns focus (WCAG 2.1.2/2.4.3) — only when `--open=<sel>` given | 🔴 yes |
 | **taste** | `taste_audit.mjs` | render-based anti-slop (type-scale drama, equal-weight repetition, body measure, palette, pure #000/#fff, whitespace) | advisory (report only) |
+| **richness** | `verify_richness.mjs` | render-based **anti-plain** (track I): flat cards (bg==page, no border/shadow), no identity colour (greyscale screen — accent unused), no elevation, blank empty states. The evidence the Step 4.6 critique reads to score its **richness** dimension (track J); the render counterpart to `aesthetic.json`'s `usage` block (track H) | advisory (report only; `--strict-richness` to block) |
 | rtl / responsive | `verify_rtl.mjs` · `verify_responsive.mjs` | RTL mirroring · breakpoint behavior (run directly when relevant) | 🔴 yes |
+| **capture** | `capture_screens.mjs` | renders each built screen at mobile+desktop (+`--dark`) → PNGs (track F). Not a gate — the **input to the Step 4.6 critique**: cite the written set in `critique.json` `screenshots` so richness/responsiveness are scored from the render, not the code | n/a (input) |
 
-`audit_runtime.mjs` orchestrates axe + states (+ focus-trap if a trigger is given) + the taste report.
+`audit_runtime.mjs` orchestrates axe + states + structure (+ focus-trap if a trigger is given) + the taste report.
+
+> **structure gate (track E)** is the render-based answer to the "clean but plain" first-draft gap: it
+> would have caught the PARICH WMS draft-1 failures (a 32px select beside a 48px input, a phone-locked
+> desktop column) that green-passed all 11 static gates. It closes the loop on the C1/C2 scaffold —
+> those ship a grid + control-parity `[data-slot]` rules, and this gate is what actually *sees* that
+> they took effect. Pass `--desktop-role` (from `intelligence.json` → a desktop-target role) to make
+> phone-lock a hard block instead of an advisory.
 
 ## Enable + run (inside `output/prototype/`, after `npm run build`)
 

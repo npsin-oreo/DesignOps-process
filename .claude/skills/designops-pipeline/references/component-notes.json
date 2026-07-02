@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "purpose": "DS component gotchas — usage traps in @npsin-oreo/design-system that are silent (they pass typecheck + every static gate) yet produce a real defect at render. Feeds gate 4 (lint_component_contracts.py, track D). Add an entry when a dogfood surfaces a new trap; the machine-checkable ones become lint rules.",
+    "ds": "@npsin-oreo/design-system"
+  },
+  "notes": [
+    {
+      "id": "native-select-height",
+      "component": "NativeSelect",
+      "severity": "block",
+      "checked": true,
+      "trap": "className is spread onto the WRAPPER (data-slot=native-select-wrapper); the inner <select data-slot=native-select> is hardcoded h-8 (+ data-[size=sm]:h-7). So a height utility on <NativeSelect className=...> silently no-ops — the select renders 32px even next to a 48px input.",
+      "fix": "Set control height globally via the [data-slot=native-select] rule in globals.css (the scaffold's C2 control-parity block ships one), not via className on the element.",
+      "surfaced_by": "PARICH WMS draft-1 (32px select beside a 48px input passed all static gates)"
+    },
+    {
+      "id": "disabled-modal-trigger",
+      "component": "AlertDialogTrigger / DialogTrigger",
+      "severity": "advisory",
+      "checked": true,
+      "trap": "A disabled control inside a modal trigger can't receive a click, so the dialog never opens — the primary action becomes unreachable in a walkthrough while looking present.",
+      "fix": "Keep the trigger enabled and guard the destructive/committing ACTION inside the dialog (or conditionally render the trigger), so the confirm step stays reachable."
+    },
+    {
+      "id": "native-select-className-target",
+      "component": "NativeSelect",
+      "severity": "advisory",
+      "checked": false,
+      "trap": "Because className targets the wrapper, ANY inner-select style (text-size, padding, border) passed via className misses the <select>. Only wrapper-level layout (margin, width) lands.",
+      "fix": "Style the inner select through the [data-slot=native-select] selector in globals.css."
+    }
+  ]
+}

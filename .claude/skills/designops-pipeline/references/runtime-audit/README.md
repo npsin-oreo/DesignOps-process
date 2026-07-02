@@ -19,6 +19,7 @@ without it, every gate prints `SKIPPED` and the run exits 0 (never blocks the de
 | **taste** | `taste_audit.mjs` | render-based anti-slop (type-scale drama, equal-weight repetition, body measure, palette, pure #000/#fff, whitespace) | advisory (report only) |
 | **richness** | `verify_richness.mjs` | render-based **anti-plain** (track I): flat cards (bg==page, no border/shadow), no identity colour (greyscale screen — accent unused), no elevation, blank empty states. The evidence the Step 4.6 critique reads to score its **richness** dimension (track J); the render counterpart to `aesthetic.json`'s `usage` block (track H) | advisory (report only; `--strict-richness` to block) |
 | rtl / responsive | `verify_rtl.mjs` · `verify_responsive.mjs` | RTL mirroring · breakpoint behavior (run directly when relevant) | 🔴 yes |
+| **capture** | `capture_screens.mjs` | renders each built screen at mobile+desktop (+`--dark`) → PNGs (track F). Not a gate — the **input to the Step 4.6 critique**: cite the written set in `critique.json` `screenshots` so richness/responsiveness are scored from the render, not the code | n/a (input) |
 
 `audit_runtime.mjs` orchestrates axe + states + structure (+ focus-trap if a trigger is given) + the taste report.
 

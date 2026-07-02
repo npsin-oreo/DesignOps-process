@@ -94,7 +94,7 @@ python3 - "$TMP/intel.json" <<'PY'
 import json, sys
 json.dump({
  "meta":{"source_brief":"brief.json","generated_at":"2026-06-12","schema_version":"1.0","overall_confidence":"medium","human_reviewed":False},
- "user_types":[{"id":"UT01","name":"Op","role_category":"operator","relationship":"primary","primary_surface":"console",
+ "user_types":[{"id":"UT01","name":"Op","role_category":"operator","relationship":"primary","primary_surface":"console","primary_device":"desktop",
    "expertise":{"domain":"expert","tool":"intermediate","usage_frequency":"daily","training_provided":"yes"},
    "source":"stated","evidence":["personas[0]"],"confidence":"high"}],
  "user_goals":[{"id":"G01","user_type_ref":"UT01","statement":"act safely and quickly","job_type":"functional","priority":"must","success_signal":"fewer errors","evidence":["TOR:objective"]}],
@@ -105,7 +105,7 @@ json.dump({
  "accessibility_needs":{"wcag_target":"AA_plus","default_floor":"WCAG 2.2 AA","specific_needs":[],"motion_sensitivity":False,"drivers":["clinical"]},
  "compliance_requirements":[{"id":"C01","name":"HIPAA","scope":"medical","source":"stated","mandatory":True,"ui_implications":["audit trail"],"confidence":"high"}],
  "decision_criticality":{"overall":"safety_critical","decision_points":[{"task_ref":"T01","stakes":"safety","who_bears_consequence":"user","info_completeness_need":"high","recommended_patterns":["double-confirm"]}]},
- "design_directives":{"density_target":3,"guidance_level":"expert","safeguard_level":"maximal","a11y_target":"AA_plus","mandatory_flows":["audit_log"],"navigation_model":"workspace","trust_emphasis":"high","rationale":"safety_critical + irreversible actions drive maximal safeguards and expert density","trade_offs":[{"decision":"confirmation friction","chose":"double-confirm on critical actions","over":"one-click speed","because":"error_tolerance is zero"}]},
+ "design_directives":{"density_target":3,"guidance_level":"expert","safeguard_level":"maximal","a11y_target":"AA_plus","mandatory_flows":["audit_log"],"navigation_model":"workspace","trust_emphasis":"high","responsive":{"target":"desktop","desktop_roles":["UT01"],"mobile_roles":[]},"rationale":"safety_critical + irreversible actions drive maximal safeguards and expert density","trade_offs":[{"decision":"confirmation friction","chose":"double-confirm on critical actions","over":"one-click speed","because":"error_tolerance is zero"}]},
  "open_questions":[]
 }, open(sys.argv[1],"w"))
 PY
@@ -124,6 +124,15 @@ python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directive
 python3 "$VALIDATE_INTEL" "$TMP/i_bad4.json" >/dev/null 2>&1 && bad "missing rationale should fail" || ok "design_directives.rationale required → exit 1"
 python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directives']['trade_offs']=[{'decision':'x'}];json.dump(d,open('$TMP/i_bad5.json','w'))"
 python3 "$VALIDATE_INTEL" "$TMP/i_bad5.json" >/dev/null 2>&1 && bad "incomplete trade_off should fail" || ok "trade_off needs decision/chose/over/because → exit 1"
+# track A — device dimension: a user_type must declare primary_device
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['user_types'][0].pop('primary_device');json.dump(d,open('$TMP/i_devA.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_devA.json" >/dev/null 2>&1 && bad "user_type without primary_device should fail" || ok "user_type.primary_device required → exit 1 (track A)"
+# track A — design_directives.responsive rollup is required
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['design_directives'].pop('responsive');json.dump(d,open('$TMP/i_devB.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_devB.json" >/dev/null 2>&1 && bad "missing responsive rollup should fail" || ok "design_directives.responsive required → exit 1 (track A)"
+# track A — responsive.target must match the device mix (a desk+mobile mix ⇒ 'both')
+python3 -c "import json;d=json.load(open('$TMP/intel.json'));d['user_types'].append({'id':'UT02','name':'Field','role_category':'operator','relationship':'secondary','primary_device':'mobile','expertise':{'domain':'novice','tool':'novice','usage_frequency':'weekly','training_provided':'no'},'source':'stated','evidence':['personas[1]'],'confidence':'high'});json.dump(d,open('$TMP/i_devC.json','w'))"
+python3 "$VALIDATE_INTEL" "$TMP/i_devC.json" >/dev/null 2>&1 && bad "desk+mobile mix with target=desktop should fail" || ok "responsive.target must match device mix (⇒both) → exit 1 (track A)"
 # feature traceability (with brief): every Must feature must be served by a task/goal
 cat > "$TMP/brief_intel.json" <<'PY'
 {"meta":{"project_name":"x","generated_at":"n","source_file":"t"},"project_overview":{"objective":"o"},"target_users":[{"persona":"p"}],"core_features":[{"id":"F1","name":"Submit order","priority":"Must"},{"id":"F2","name":"History","priority":"Should"}],"user_flows":[],"constraints":{},"open_questions":[],"scoring_criteria":{}}
@@ -372,7 +381,7 @@ case "$AUD_OUT" in *"directive=FAIL"*) ok "audit_prototype runs gate 7 (directiv
 RT="$SCRIPTS_DIR/../references/runtime-audit/scripts"
 [ -f "$RT/audit_runtime.mjs" ] && [ -f "$RT/axe_audit.mjs" ] && [ -f "$RT/verify_states.mjs" ] && ok "runtime-audit scripts vendored" || bad "runtime-audit scripts missing"
 if command -v node >/dev/null 2>&1; then
-  for s in audit_runtime axe_audit verify_states verify_structure verify_richness verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
+  for s in audit_runtime axe_audit verify_states verify_structure verify_richness capture_screens verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
   echo '<!doctype html><html lang="en"><head><title>x</title></head><body><button>Go</button></body></html>' > "$TMP/rt.html"
   node "$RT/audit_runtime.mjs" "$TMP/rt.html" >/dev/null 2>&1 && ok "runtime audit skips cleanly w/o Playwright → exit 0" || bad "runtime audit should skip (exit 0) without Playwright"
   # the new render structure gate (track E) must also degrade gracefully without Playwright
@@ -518,6 +527,12 @@ python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "dimension score 11 not bl
 # track J: the richness dimension is now required — a critique missing it must block
 _crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":8,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7}}]}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "critique without a richness score not blocked" || ok "missing richness dimension → blocked (track J)"
+# track F: `screenshots` if present must be a list (the rendered evidence set); a non-list blocks
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screenshots\":\"one.png\",$GOOD_SCREENS}"
+python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "non-list screenshots not blocked" || ok "screenshots must be a list → blocked (track F)"
+# a critique that cites its screenshot set is valid (no evidence nudge)
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screenshots\":[\"s/x-mobile.png\"],$GOOD_SCREENS,\"what_worked\":[\"x\"]}"
+python3 "$VC" "$TMP/crit.json" 2>&1 | grep -q "no .screenshots." && bad "screenshots cited but nudge still fired" || ok "screenshots cited → no evidence nudge (track F)"
 
 # ── T16. validate_edgecases — front edge-case spine (Step 3.7) ────────────────
 echo "[T16] validate_edgecases — traceability + directive floors"
@@ -766,6 +781,24 @@ OUT="$(python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" 2>&1)"; echo "$
 # H.4 no usage block → still valid (advisory nudge, back-compat)
 _usage None
 python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "no usage block → exit 0 (warns, back-compat)" || bad "missing usage should warn, not block"
+
+# ── T21c. component contracts — DS gotchas (track D, gate 4) ─────────────────
+echo "[T21c] lint_component_contracts — DS gotchas (track D)"
+LCC="$SCRIPTS_DIR/lint_component_contracts.py"
+# NativeSelect className height no-ops (routes to wrapper) → hard block
+printf 'export function F(){return <NativeSelect className="h-12 w-full"><option>A</option></NativeSelect>}\n' > "$TMP/d_ns.tsx"
+python3 "$LCC" "$TMP/d_ns.tsx" >/dev/null 2>&1 && bad "h-* on NativeSelect should block" || ok "NativeSelect className height no-op → blocked (gate 4, track D)"
+# no height on NativeSelect → clean
+printf 'export function F(){return <NativeSelect className="w-full"><option>A</option></NativeSelect>}\n' > "$TMP/d_ns_ok.tsx"
+python3 "$LCC" "$TMP/d_ns_ok.tsx" >/dev/null 2>&1 && ok "NativeSelect without a height → exit 0" || bad "clean NativeSelect wrongly blocked"
+# disabled modal trigger → advisory (never blocks), but is reported
+OUT="$(printf 'export function F(){return <AlertDialogTrigger asChild><button disabled>Go</button></AlertDialogTrigger>}\n' > "$TMP/d_tr.tsx"; python3 "$LCC" "$TMP/d_tr.tsx" 2>&1)"
+echo "$OUT" | grep -q "disabled trigger\|disabled control" && ok "disabled modal trigger → advisory reported (track D)" || bad "disabled trigger not reported"
+printf 'export function F(){return <AlertDialogTrigger asChild><button disabled>Go</button></AlertDialogTrigger>}\n' > "$TMP/d_tr.tsx"
+python3 "$LCC" "$TMP/d_tr.tsx" >/dev/null 2>&1 && ok "disabled trigger is advisory only → exit 0 (no block)" || bad "advisory should not block"
+# ds-allow-contract escape hatch on the NativeSelect line
+printf 'export function F(){return <NativeSelect className="h-12" /> /* ds-allow-contract */}\n' > "$TMP/d_allow.tsx"
+python3 "$LCC" "$TMP/d_allow.tsx" >/dev/null 2>&1 && ok "ds-allow-contract escapes the NativeSelect rule → exit 0" || bad "ds-allow-contract not honored"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

@@ -104,16 +104,28 @@ in `globals.css`. Token contract in `references/aesthetics/README.md` § "layout
   render gate (E1 `verify_structure.mjs` + E2 gate 12 in `audit_prototype.py`, outside `--strict`
   per D0 + E3 selftest T21/T22). A layout system from screen 1 + a rendering gate catches the
   majority of what went wrong this round.
-- **Phase 2:** A + D + G. Make dual-mode a first-class traceable requirement, teach the
-  lint the DS gotchas, codify demo-prefill.
-- **Phase 3 (richness):** F + H + I + J — **H/I/J IMPLEMENTED**. Usage directives (H:
+- **Phase 2:** A + D + G — **IMPLEMENTED**. A: `user_type.primary_device` + `design_directives.responsive`
+  rollup in `validate_intelligence.py` (required + mix-consistency invariant), auto-wired to the render
+  gate's `--desktop-role`. D: DS gotchas (`references/component-notes.json`) enforced by gate 4 —
+  NativeSelect height no-op blocks, disabled modal trigger advisory. G: demo-prefill convention in
+  `commands/generate-prototype.md` + `poc-patterns.md` (forms open with valid seed defaults so gated
+  actions stay reachable). Dual-mode is now a first-class traceable requirement.
+- **Phase 3 (richness):** F + H + I + J — **IMPLEMENTED**. Usage directives (H:
   `aesthetic.json` `usage` block + `validate_aesthetic.py`, optional/nudged when absent),
   the anti-plain render detector (I: `verify_richness.mjs` — flat cards / no identity colour /
-  no elevation / blank empty states, advisory + `--strict-richness`), and the critique richness
+  no elevation / blank empty states, advisory + `--strict-richness`), the critique richness
   dimension (J: 7th weighted dimension in `validate_critique.py`, scored from the render so a flat
-  "neutral skeleton" can't score high on tokens alone). **F** (feed the actual screenshot set into
-  the critique input) remains the open piece — I currently feeds the critique via its printed report,
-  not an image handoff. Close the "clean but plain" gap end-to-end.
+  "neutral skeleton" can't score high on tokens alone), and screenshots-into-critique (F:
+  `capture_screens.mjs` renders each screen at mobile+desktop → PNGs, `validate_critique.py` nudges
+  for a `screenshots` set). The "clean but plain" gap is closed end-to-end.
+
+## Status: the proposal is fully implemented (A–J)
+
+All ten fixes A–J are shipped on `feat/layout-axis-and-scaffold` (PR #15): structure (B/C/E),
+richness (H/I/J), device + gotchas + prefill + screenshots (A/D/G/F). Gate count 12 (11 static +
+optional render), critique 7 dimensions, **selftest 168/0**. Remaining items are refactors, not
+proposal fixes: fold gates 6/10/11 into a "fidelity family"; promote the render gate to a required
+gate behind an explicit `--require-render` flag once Playwright is standard in CI.
 
 ## The one-line thesis
 

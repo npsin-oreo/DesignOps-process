@@ -108,6 +108,15 @@ def validate(path):
     if not data.get("what_worked"):
         warnings.append("what_worked is empty — a good critique names what works, not only faults")
 
+    # track F — the critique should score from what RENDERS, not the code. A `screenshots` array
+    # cites the evidence the judge (and the richness/responsiveness scores) actually looked at.
+    shots = data.get("screenshots")
+    if not shots:
+        warnings.append("no `screenshots` — capture the built screens (capture_screens.mjs) and cite the "
+                        "set here so richness/responsiveness are scored from the render, not the code (track F)")
+    elif not isinstance(shots, list):
+        errors.append("screenshots must be a list of image paths (the rendered set the judge scored)")
+
     if judge is False:
         flags["judge_failed"] = True
     return errors, warnings, flags

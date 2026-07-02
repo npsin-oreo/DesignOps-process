@@ -302,6 +302,8 @@ Map each flow to a nav item: `{ title: flow.name, url: "/[slug]", icon: [lucide 
 
 **Mock data rule:** realistic to the domain (real names, real IDs/record numbers, real document numbers) · never "User 1"/"Lorem ipsum"
 
+**Demo-prefill rule (track G — reachability):** every form opens with **valid seed defaults**, not empty fields — so every gated action downstream is reachable in a walkthrough. A confirm/submit button that is `disabled` until a valid form can never be demoed (and the render gate can't reach the dialog behind it) if the form starts blank. Prefill each field with a realistic default so the primary action is enabled on load and every `AlertDialog`/confirm is one click away. Never disable a modal **trigger** to express "not ready" — guard the committing action **inside** the dialog instead (gate 4 flags a disabled trigger, track D), so the confirm step stays reachable. This is what makes the built prototype demoable end-to-end and lets Step 4.6's screenshot capture (track F) show a populated, working screen rather than an empty skeleton.
+
 For each screen in the resolved list:
 
 ### 4a. Read screen spec

@@ -39,7 +39,7 @@ consume — so UI decisions come from *what the product needs*, not from a featu
             "schema_version": "1.0", "overall_confidence": "high|medium|low", "human_reviewed": false },
 
   "user_types": [{ "id": "UT01", "name": "", "role_category": "operator|admin|end_user|approver|auditor|system",
-    "relationship": "primary|secondary|occasional", "primary_surface": "",
+    "relationship": "primary|secondary|occasional", "primary_surface": "", "primary_device": "desktop|mobile|both",
     "expertise": { "domain": "novice|intermediate|expert", "tool": "novice|intermediate|expert",
                    "usage_frequency": "first_time|occasional|daily|power", "training_provided": "yes|no|unknown" },
     "source": "stated|inferred", "evidence": ["personas[0]","F03"], "confidence": "high|medium|low" }],
@@ -76,6 +76,7 @@ consume — so UI decisions come from *what the product needs*, not from a featu
     "safeguard_level": "minimal|standard|strict|maximal", "a11y_target": "AA|AA_plus|AAA",
     "mandatory_flows": [], "navigation_model": "single|wizard|hub_spoke|workspace",
     "trust_emphasis": "low|medium|high",
+    "responsive": { "target": "desktop|mobile|both", "desktop_roles": ["UT01"], "mobile_roles": [] },
     "rationale": "<short why: how these directives follow from the dimensions + research/competitive evidence>",
     "trade_offs": [{ "decision": "", "chose": "", "over": "", "because": "" }] },
 
@@ -85,7 +86,9 @@ consume — so UI decisions come from *what the product needs*, not from a featu
 
 `design_directives` is the **seam** Component Mapping consumes:
 `density_target → layout primitive` · `safeguard_level → confirm/undo/preview` · `guidance_level → onboarding/copy` ·
-`a11y_target → component variants + audit target` · `navigation_model → app shell` · `mandatory_flows → injected screens` · `trust_emphasis → evidence/transparency`.
+`a11y_target → component variants + audit target` · `navigation_model → app shell` · `mandatory_flows → injected screens` · `trust_emphasis → evidence/transparency` · `responsive → layout axis container widths + the render phone-lock gate (a desktop/both target makes gate 12 block a phone-locked build)`.
+
+**`responsive` (track A):** each `user_type.primary_device` (required — a device is always knowable, so "evidence or silence" does not apply) rolls up here. `target` must reflect the mix — a desk + mobile audience ⇒ `both` — and `desktop_roles`/`mobile_roles` name which roles go where. This is root cause #1: a build went mobile-only because the split desk/frontline audience was never captured as a directive. The audit auto-passes `--desktop-role` to the render gate when `target ∈ {desktop, both}`.
 
 ---
 

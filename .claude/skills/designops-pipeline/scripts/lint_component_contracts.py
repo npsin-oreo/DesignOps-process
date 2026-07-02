@@ -157,6 +157,31 @@ def lint_file(path):
             adv.append((line_of(scan, m.start()),
                         "nested <Dialog> detected — don't stack modals"))
 
+    # ── DS gotchas (track D — see references/component-notes.json) ───────────────
+    # NativeSelect: className routes to the WRAPPER (data-slot=native-select-wrapper); the inner
+    # <select data-slot=native-select> is hardcoded h-8, so a height utility here silently no-ops.
+    for m in re.finditer(r"<NativeSelect\b", scan):
+        if skipped(m.start()):
+            continue
+        _, open_tag = element_text(scan, m.start())
+        if re.search(r"""className\s*=\s*["'][^"']*(?<![\w-])(?:h-\S+|min-h-\S+|size-\S+)""", open_tag):
+            hard.append((line_of(scan, m.start()),
+                         "<NativeSelect> className sets a height (h-*/min-h-*/size-*) but it routes to the "
+                         "WRAPPER — the inner <select> stays h-8 and the height no-ops. Set control height via "
+                         "the [data-slot=native-select] rule in globals.css (the scaffold ships one), not here"))
+
+    # A disabled control inside a modal trigger → the trigger can't be clicked, so the dialog never
+    # opens. Guard the ACTION inside the dialog (or conditionally render), don't disable the trigger.
+    for trig in ("AlertDialogTrigger", "DialogTrigger"):
+        for m in re.finditer(rf"<{trig}\b", scan):
+            if skipped(m.start()):
+                continue
+            el, _ = element_text(scan, m.start())
+            if re.search(r"(?<![\w-])disabled\b(?!\s*=\s*\{?\s*false)", el):
+                adv.append((line_of(scan, m.start()),
+                            f"<{trig}> wraps a disabled control — a disabled trigger can't be clicked, so the "
+                            "dialog may never open; guard the action inside the dialog instead"))
+
     # ── Field & Input ──────────────────────────────────────────────────────────
     htmlfors = set(HTMLFOR.findall(scan))
     for m in re.finditer(r"<Input\b", scan):

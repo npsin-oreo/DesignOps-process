@@ -893,6 +893,13 @@ After generating, log:
 
 After generating the prototype, run a **scored review** of every main screen:
 
+> **Score from the render, not the code (track F).** Before scoring, capture each built screen at
+> mobile + desktop with `references/runtime-audit/scripts/capture_screens.mjs` and cite the written
+> PNG set in `critique.json` `screenshots`. The judge scored PARICH draft-1 an 8.1 blind (from source
+> + screen-inventory), missing the cramped column and flat surfaces a screenshot makes obvious — the
+> richness + responsiveness dimensions must be read off the actual render. `validate_critique.py`
+> nudges when `screenshots` is absent.
+
 1. Score the **7 weighted dimensions** (Visual Hierarchy 20 · Consistency 15 · Accessibility 20 · Usability 15 · Responsiveness 10 · Performance 10 · **Richness/identity 10**) → compute the overall (≤6 = rework before ship). Richness is scored from what RENDERS against `aesthetic.json`'s `usage` block (track H) — a flat "brand colour on a neutral skeleton" scores low even when tokens are applied.
 2. Run **Nielsen's 10 heuristics**; flag each violation by number (H1…H10).
 3. Run the **anti-slop gate** (`aesthetics/taste/design-taste.md` Banned Defaults): pure `#000/#fff`, identical equal-weight cards, everything centered, rainbow accents, emoji-as-icons, colored left-border strips, em-dash/marketing-filler copy → each is a **Major** finding. The screen must earn `aesthetic.json`'s `mood_adjective`.
@@ -966,7 +973,7 @@ Audit the prototype across 3 categories (see the severity matrix in the referenc
 
 > `audit_prototype.py` also runs a **UX-copy gate** (gate 3, via `references/ux-writing/scripts/check_no_emoji.py`): no emoji and no em/en-dash in product UI → 🔴 block. Full copy rules: `references/ux-writing/voice-tone.md`.
 
-> …and a **component-contract gate** (gate 4, via `scripts/lint_component_contracts.py`): enforces the Button/Dialog/Field usage contracts from `references/component-contracts.md` as runnable a11y checks — icon-only buttons need an accessible name, every `DialogContent`/`AlertDialogContent` needs a `DialogTitle`, every `Input` with an `id` needs a matching `FieldLabel htmlFor` → 🔴 block. Fuzzier rules (one-primary-per-view, missing `DialogDescription`, destructive-variant, `aria-invalid` on errored fields) print as **advisories** and never fail the gate. Escape a justified case with a `ds-allow-contract` comment.
+> …and a **component-contract gate** (gate 4, via `scripts/lint_component_contracts.py`): enforces the Button/Dialog/Field usage contracts from `references/component-contracts.md` as runnable a11y checks — icon-only buttons need an accessible name, every `DialogContent`/`AlertDialogContent` needs a `DialogTitle`, every `Input` with an `id` needs a matching `FieldLabel htmlFor` → 🔴 block. Fuzzier rules (one-primary-per-view, missing `DialogDescription`, destructive-variant, `aria-invalid` on errored fields) print as **advisories** and never fail the gate. It also enforces the **DS gotchas** in `references/component-notes.json` (track D): a height utility on `<NativeSelect className>` 🔴 blocks (it routes to the wrapper — the inner `<select>` stays `h-8` and the height silently no-ops; set it via the `[data-slot=native-select]` rule the scaffold ships), and a disabled control inside an `AlertDialogTrigger`/`DialogTrigger` is an advisory (a disabled trigger never opens the dialog). Escape a justified case with a `ds-allow-contract` comment.
 
 > …and a **font-loading gate** (gate 5, via `scripts/lint_font_imports.py`): a remote-font CSS `@import` (`fonts.googleapis.com` etc.) in `globals.css` → 🔴 block — it 500s the Turbopack dev server; load fonts with `next/font` instead.
 

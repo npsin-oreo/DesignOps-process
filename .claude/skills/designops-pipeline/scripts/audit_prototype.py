@@ -533,7 +533,19 @@ def main(argv):
     out += ["## 11. Axis fidelity (non-colour axes applied: type scale, pills, motion)",
             "```", axis_out or "(skipped)", "```", ""]
 
-    # gate 12 (render structure, track E) — RENDER-OPTIONAL: evaluated outside --strict (D0)
+    # gate 12 (render structure, track E) — RENDER-OPTIONAL: evaluated outside --strict (D0).
+    # Auto-derive --desktop-role from intelligence.json's responsive rollup (track A → E): a build
+    # that serves a desktop role must not be phone-locked, so phone-lock becomes a hard failure.
+    if not desktop_role:
+        intel_art = _find_artifact(proto, ("intelligence.json",), intel)
+        if intel_art:
+            try:
+                import json as _json
+                _resp = (_json.loads(intel_art.read_text()).get("design_directives", {}) or {}).get("responsive", {})
+                if (_resp or {}).get("target") in ("desktop", "both"):
+                    desktop_role = True
+            except (OSError, ValueError):
+                pass
     render_ok, render_out = render_gate(proto, desktop_role)
     out += ["## 12. Render structure (control parity / surface / phone-lock — needs a build + Playwright)",
             "```", render_out or "(skipped)", "```", ""]

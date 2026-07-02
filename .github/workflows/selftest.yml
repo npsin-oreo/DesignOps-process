@@ -1,0 +1,32 @@
+name: designops selftest
+
+# Runs the pipeline's regression guard (168 checks) on every PR that touches the skill, and on
+# pushes to main. The runtime .mjs gates degrade gracefully without Playwright (they print SKIPPED),
+# so CI needs only python3 + node — both preinstalled on ubuntu-latest — and stays fast.
+on:
+  pull_request:
+    paths:
+      - ".claude/skills/designops-pipeline/**"
+      - ".github/workflows/selftest.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".claude/skills/designops-pipeline/**"
+      - ".github/workflows/selftest.yml"
+
+# Cancel an in-progress run when a new commit lands on the same PR/branch.
+concurrency:
+  group: selftest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # node is preinstalled on ubuntu-latest; the runtime scripts self-skip without Playwright.
+      - name: Run selftest
+        run: bash .claude/skills/designops-pipeline/scripts/selftest.sh

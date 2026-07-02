@@ -107,7 +107,7 @@ def _load(path):
 
 
 # ── layout axis (optional 7th axis, directive-derived) ─────────────────────────
-# grid / gutter / container / control-height / touch tokens that fix C scaffolds and gate 11 (fix B3)
+# grid / gutter / container / control-height / touch tokens that fix C scaffolds and the gate-6 fidelity family axis sub (fix B3)
 # verifies. Validated only when axes.layout is present; outside the coherence source-count (D1).
 LAYOUT_BREAKPOINTS = ("sm", "md", "lg")
 
@@ -135,7 +135,7 @@ def _validate_layout_axis(layout, errors, warnings):
     res = layout.get("resolved")
     if not isinstance(res, dict):
         errors.append("axes.layout.resolved is required (the grid/gutter/control tokens fix C scaffolds and "
-                      "gate 11 verifies) — give it grid_cols / gutter / container_max / control_h / touch_min")
+                      "gate 6 fidelity family axis sub verifies) — give it grid_cols / gutter / container_max / control_h / touch_min")
         return
 
     # grid_cols: three integer breakpoints, non-decreasing (a wider viewport never has fewer columns)

@@ -13,7 +13,7 @@
  *                                because a genuinely centered narrow form (login) is legitimate.
  *
  * Renders at mobile (390) + desktop (1280). This is the layer that would have caught the PARICH WMS
- * draft-1 gaps (cramped mobile-only column, 32px select) that green-passed all 11 static gates.
+ * draft-1 gaps (cramped mobile-only column, 32px select) that green-passed all 9 static gates.
  *
  * Usage: node scripts/verify_structure.mjs <file.html> [--desktop-role]
  * Degrades gracefully: no Playwright → prints SKIPPED, exits 0. A real structural failure → exit 1.

@@ -93,15 +93,15 @@ type/shape/spacing/motion. The layout axis is added as an **optional 7th `axes.l
 **not** a new validator. It is directive-derived (`source: "intelligence"`, from `density_target` +
 the new `responsive` directive), so it sits outside the coherence source-count and does not disturb
 the existing 6-axis composition rules. `validate_aesthetic.py` iterates only the required 6, so the
-new axis is fully back-compatible; gate 11 (fix B, later task) verifies its `resolved` metrics landed
+new axis is fully back-compatible; the gate-6 fidelity family axis sub (fix B) verifies its `resolved` metrics landed
 in `globals.css`. Token contract in `references/aesthetics/README.md` § "layout axis".
 
 ## Rollout phasing
 
 - **Phase 1 (highest ROI, structural):** B + C + E — **IMPLEMENTED**. Layout axis (B1-B3:
-  `axes.layout` + `validate_aesthetic.py` invariants + gate 11 token check), scaffold defaults
+  `axes.layout` + `validate_aesthetic.py` invariants + gate-6 fidelity family token check), scaffold defaults
   (C1 `Grid`/`Col`/`Stack` + `@theme` layout tokens, C2 `[data-slot]` control-parity), and the
-  render gate (E1 `verify_structure.mjs` + E2 gate 12 in `audit_prototype.py`, outside `--strict`
+  render gate (E1 `verify_structure.mjs` + E2 render gate 10 in `audit_prototype.py`, outside `--strict`
   per D0 + E3 selftest T21/T22). A layout system from screen 1 + a rendering gate catches the
   majority of what went wrong this round.
 - **Phase 2:** A + D + G — **IMPLEMENTED**. A: `user_type.primary_device` + `design_directives.responsive`
@@ -122,10 +122,12 @@ in `globals.css`. Token contract in `references/aesthetics/README.md` § "layout
 ## Status: the proposal is fully implemented (A–J)
 
 All ten fixes A–J are shipped on `feat/layout-axis-and-scaffold` (PR #15): structure (B/C/E),
-richness (H/I/J), device + gotchas + prefill + screenshots (A/D/G/F). Gate count 12 (11 static +
-optional render), critique 7 dimensions, **selftest 168/0**. Remaining items are refactors, not
-proposal fixes: fold gates 6/10/11 into a "fidelity family"; promote the render gate to a required
-gate behind an explicit `--require-render` flag once Playwright is standard in CI.
+richness (H/I/J), device + gotchas + prefill + screenshots (A/D/G/F). Then a follow-up refactor
+**folded gates 6/10/11 into one "fidelity family"** (gate 6 = theme colours + font + non-colour
+axes, since they answer one question), renumbering the audit to **10 gates** (9 static + optional
+render gate 10). Critique 7 dimensions, **selftest 169/0**. Remaining item is a refactor, not a
+proposal fix: promote the render gate to a required gate behind an explicit `--require-render` flag
+once Playwright is standard in CI.
 
 ## The one-line thesis
 

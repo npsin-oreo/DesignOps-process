@@ -73,7 +73,13 @@ python3 "$VALIDATE" "$TMP/bad_prio.json" >/dev/null 2>&1 && bad "bad priority sh
 echo "[T4] execution model — prep mode stages, no recursion"
 if [ -f "$SAMPLE_TOR" ]; then
   OUT="$TMP/run"; mkdir -p "$OUT"
-  CLAUDECODE=1 /bin/bash "$RUN" --tor "$SAMPLE_TOR" --out "$OUT" >"$OUT/log.txt" 2>&1
+  # stub DS so the flows/screens prompts stage deterministically — without an explicit --ds,
+  # run_pipeline auto-resolves ../looloo-design-system, which exists only on a dev checkout, not in CI.
+  DS_STUB="$TMP/ds_stub"; mkdir -p "$DS_STUB/components"
+  printf '# stub DS\n' > "$DS_STUB/README.md"
+  printf 'export const Button = () => null\n' > "$DS_STUB/components/button.tsx"
+  printf '{"tokens":{}}\n' > "$DS_STUB/token-contract.json"
+  CLAUDECODE=1 /bin/bash "$RUN" --tor "$SAMPLE_TOR" --ds "$DS_STUB" --out "$OUT" >"$OUT/log.txt" 2>&1
   rc=$?
   [ "$rc" = "0" ] && ok "prep run exit 0" || bad "prep run exit $rc"
   [ -f "$OUT/.prompt_step1.txt" ] && [ -f "$OUT/.prompt_intel.txt" ] && [ -f "$OUT/.prompt_aesthetic.txt" ] && [ -f "$OUT/.prompt_flows.txt" ] && [ -f "$OUT/.prompt_step3.txt" ] && ok "step1 + 2.5 + 2.6 + flows + screens prompts staged" || bad "prompts not staged"

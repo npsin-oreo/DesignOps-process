@@ -17,6 +17,7 @@ without it, every gate prints `SKIPPED` and the run exits 0 (never blocks the de
 | **structure** | `verify_structure.mjs` | render at mobile+desktop: **control-height parity** within a form (the 32px select next to a 48px input — the NativeSelect className→wrapper bug), **surface consistency** across breakpoints, **phone-lock** (content capped to phone width on desktop — advisory unless `--desktop-role`) | 🔴 yes (phone-lock advisory) |
 | **focus-trap** | `verify_focustrap.mjs` | modal traps Tab, has `role=dialog`+`aria-modal`+name, Esc returns focus (WCAG 2.1.2/2.4.3) — only when `--open=<sel>` given | 🔴 yes |
 | **taste** | `taste_audit.mjs` | render-based anti-slop (type-scale drama, equal-weight repetition, body measure, palette, pure #000/#fff, whitespace) | advisory (report only) |
+| **richness** | `verify_richness.mjs` | render-based **anti-plain** (track I): flat cards (bg==page, no border/shadow), no identity colour (greyscale screen — accent unused), no elevation, blank empty states. The evidence the Step 4.6 critique reads to score its **richness** dimension (track J); the render counterpart to `aesthetic.json`'s `usage` block (track H) | advisory (report only; `--strict-richness` to block) |
 | rtl / responsive | `verify_rtl.mjs` · `verify_responsive.mjs` | RTL mirroring · breakpoint behavior (run directly when relevant) | 🔴 yes |
 
 `audit_runtime.mjs` orchestrates axe + states + structure (+ focus-trap if a trigger is given) + the taste report.

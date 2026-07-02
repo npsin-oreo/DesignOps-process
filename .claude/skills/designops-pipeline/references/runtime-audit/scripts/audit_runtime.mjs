@@ -79,6 +79,14 @@ if (!taste.skipped) {
   console.log(taste.out.split("\n").map((l) => `    ${l}`).join("\n"));
 }
 
+// richness (anti-plain, track I) — advisory: evidence for the critique's richness dimension (track J)
+const richness = run("verify_richness.mjs");
+if (!richness.skipped) {
+  anyRan = true;
+  console.log(`\n  richness (anti-plain, advisory):`);
+  console.log(richness.out.split("\n").map((l) => `    ${l}`).join("\n"));
+}
+
 if (!anyRan) {
   console.log("  all gates SKIPPED — Playwright not installed.");
   console.log("  enable:  npm i -D playwright && npx playwright install chromium");

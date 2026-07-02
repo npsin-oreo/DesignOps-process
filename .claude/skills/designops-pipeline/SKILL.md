@@ -17,7 +17,7 @@ description: >
   Step 3.7 (Edge-Case Analysis → edge-cases.json) enumerates the non-happy-path conditions every Must
   screen must survive, via UI Stack × CORRECT, severity driven by the Step 2.5 directives.
   Step 4 builds a POC prototype from a ready-made component library + mock data, Step 4.6 runs a
-  scored critique (6 weighted dimensions + Nielsen + anti-slop + a separate judge pass), Step 4.7 is a runnable audit gate
+  scored critique (7 weighted dimensions incl. richness/identity + Nielsen + anti-slop + a separate judge pass), Step 4.7 is a runnable audit gate
   (audit_prototype.py — 11 static gates: tokens + WCAG contrast in light/dark + no-emoji + component contracts + no remote-font @import + theme fidelity + directive fidelity + screen coverage + edge-case coverage + font fidelity + axis fidelity — plus an optional render gate 12: structure/control-parity, needs a build + Playwright) before handoff.
   UX layers feed the pipeline: Step 2.3 (User Research → research.json: personas/JTBD/pains) and
   Step 2.4 (Competitive Analysis → competitive.json) supply evidence to Step 2.5; Step 4.8
@@ -893,7 +893,7 @@ After generating, log:
 
 After generating the prototype, run a **scored review** of every main screen:
 
-1. Score the **6 weighted dimensions** (Visual Hierarchy 20 · Consistency 20 · Accessibility 20 · Usability 20 · Responsiveness 10 · Performance 10) → compute the overall (≤6 = rework before ship).
+1. Score the **7 weighted dimensions** (Visual Hierarchy 20 · Consistency 15 · Accessibility 20 · Usability 15 · Responsiveness 10 · Performance 10 · **Richness/identity 10**) → compute the overall (≤6 = rework before ship). Richness is scored from what RENDERS against `aesthetic.json`'s `usage` block (track H) — a flat "brand colour on a neutral skeleton" scores low even when tokens are applied.
 2. Run **Nielsen's 10 heuristics**; flag each violation by number (H1…H10).
 3. Run the **anti-slop gate** (`aesthetics/taste/design-taste.md` Banned Defaults): pure `#000/#fff`, identical equal-weight cards, everything centered, rainbow accents, emoji-as-icons, colored left-border strips, em-dash/marketing-filler copy → each is a **Major** finding. The screen must earn `aesthetic.json`'s `mood_adjective`.
 4. The detailed 4-layer checklist (hierarchy / IA / consistency / context-fit, tied to `design_directives`) is in `critique-framework.md` — use it to find the specifics.

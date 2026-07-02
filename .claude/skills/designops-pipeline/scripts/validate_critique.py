@@ -22,7 +22,12 @@ JUDGE_FAIL_CAP = 2.0
 # below this the screen is "rework before ship" — a warning, not a block,
 # because the agent's fix loop (not the gate) is what raises it.
 SHIP_THRESHOLD = 6.0
-DIMENSIONS = ("hierarchy", "consistency", "a11y", "usability", "responsiveness", "performance")
+# 7th dimension `richness` (track J): visual richness / identity usage, scored from what actually
+# RENDERS (tinted surfaces, elevation hierarchy, accent placement, a hero moment — the track-H usage
+# intent, seen by the track-I anti-plain check). A flat "brand colour on a neutral skeleton" can pass
+# every static gate and score high on the other six; requiring an explicit richness score means the
+# critique cannot certify a plain build as good just because its tokens exist.
+DIMENSIONS = ("hierarchy", "consistency", "a11y", "usability", "responsiveness", "performance", "richness")
 SEVERITIES = {"critical", "major", "minor", "enhancement"}
 
 
@@ -79,7 +84,7 @@ def validate(path):
             dims = s.get("dimensions", {})
             for d in DIMENSIONS:
                 if d not in dims:
-                    errors.append(f"{sp}.dimensions.{d} is required (6 weighted dimensions)")
+                    errors.append(f"{sp}.dimensions.{d} is required (7 weighted dimensions incl. richness)")
                 else:
                     _num(dims[d], f"{sp}.dimensions.{d}", errors, 1, 10)
             _num(s.get("score"), f"{sp}.score", errors, 1, 10)

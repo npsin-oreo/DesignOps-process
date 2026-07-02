@@ -372,11 +372,13 @@ case "$AUD_OUT" in *"directive=FAIL"*) ok "audit_prototype runs gate 7 (directiv
 RT="$SCRIPTS_DIR/../references/runtime-audit/scripts"
 [ -f "$RT/audit_runtime.mjs" ] && [ -f "$RT/axe_audit.mjs" ] && [ -f "$RT/verify_states.mjs" ] && ok "runtime-audit scripts vendored" || bad "runtime-audit scripts missing"
 if command -v node >/dev/null 2>&1; then
-  for s in audit_runtime axe_audit verify_states verify_structure verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
+  for s in audit_runtime axe_audit verify_states verify_structure verify_richness verify_focustrap taste_audit; do node --check "$RT/$s.mjs" 2>/dev/null || bad "runtime script $s.mjs syntax"; done
   echo '<!doctype html><html lang="en"><head><title>x</title></head><body><button>Go</button></body></html>' > "$TMP/rt.html"
   node "$RT/audit_runtime.mjs" "$TMP/rt.html" >/dev/null 2>&1 && ok "runtime audit skips cleanly w/o Playwright → exit 0" || bad "runtime audit should skip (exit 0) without Playwright"
   # the new render structure gate (track E) must also degrade gracefully without Playwright
   node "$RT/verify_structure.mjs" "$TMP/rt.html" 2>&1 | grep -q "SKIPPED" && ok "verify_structure skips cleanly w/o Playwright (track E)" || bad "verify_structure should print SKIPPED without Playwright"
+  # the anti-plain richness check (track I) is advisory + must degrade gracefully too
+  node "$RT/verify_richness.mjs" "$TMP/rt.html" 2>&1 | grep -q "SKIPPED" && ok "verify_richness skips cleanly w/o Playwright (track I)" || bad "verify_richness should print SKIPPED without Playwright"
 else
   ok "node absent — runtime-audit syntax/skip checks N/A"
 fi
@@ -494,7 +496,7 @@ python3 -c "import json,sys; m=json.load(open('$TMP/fb/manifest.json')); sys.exi
 echo "[T15] validate_critique — judge verdict caps the self-score"
 VC="$SCRIPTS_DIR/validate_critique.py"
 _crit() { printf '%s' "$1" > "$TMP/crit.json"; }
-GOOD_SCREENS='"screens":[{"name":"Booking","score":7.5,"dimensions":{"hierarchy":8,"consistency":8,"a11y":7,"usability":7,"responsiveness":7,"performance":7}}]'
+GOOD_SCREENS='"screens":[{"name":"Booking","score":7.5,"dimensions":{"hierarchy":8,"consistency":8,"a11y":7,"usability":7,"responsiveness":7,"performance":7,"richness":7}}]'
 # valid, judge passes
 _crit "{\"judge_verdict\":true,\"overall_score\":7.4,$GOOD_SCREENS,\"what_worked\":[\"clear primary action\"]}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && ok "valid critique (judge pass) → exit 0" || bad "valid critique rejected"
@@ -511,8 +513,11 @@ python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "judge=false without judge
 _crit "{\"overall_score\":7.4,$GOOD_SCREENS}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "missing judge_verdict not blocked" || ok "missing judge_verdict → blocked"
 # out-of-range dimension score → block
-_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":11,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7}}]}"
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":11,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7,\"richness\":7}}]}"
 python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "dimension score 11 not blocked" || ok "dimension score out of 1..10 → blocked"
+# track J: the richness dimension is now required — a critique missing it must block
+_crit "{\"judge_verdict\":true,\"overall_score\":7.4,\"screens\":[{\"name\":\"X\",\"score\":7,\"dimensions\":{\"hierarchy\":8,\"consistency\":8,\"a11y\":7,\"usability\":7,\"responsiveness\":7,\"performance\":7}}]}"
+python3 "$VC" "$TMP/crit.json" >/dev/null 2>&1 && bad "critique without a richness score not blocked" || ok "missing richness dimension → blocked (track J)"
 
 # ── T16. validate_edgecases — front edge-case spine (Step 3.7) ────────────────
 echo "[T16] validate_edgecases — traceability + directive floors"
@@ -736,6 +741,31 @@ cat > "$TMP/layout_gridonly_aes.json" <<'JSON'
 JSON
 printf '@theme { --spacing-gutter: 1.5rem; }\n' > "$TMP/layout_grid.css"
 python3 "$LAF" "$TMP/layout_grid.css" "$TMP/layout_gridonly_aes.json" >/dev/null 2>&1 && ok "grid_cols not treated as a token (component prop) → exit 0" || bad "grid_cols wrongly required as a CSS token"
+
+# ── T21b. usage directives (track H) — validate_aesthetic richness intent ─────
+echo "[T21b] usage directives (track H) — how-to-apply-identity block"
+_usage() {  # $1 = python literal for d['usage'] (or 'None' to omit)
+  python3 -c "
+import json
+d=json.load(open('$TMP/aesthetic.json'))
+u=$1
+if u is None: d.pop('usage', None)
+else: d['usage']=u
+json.dump(d,open('$TMP/aes_usage.json','w'))"
+}
+UGOOD="{'surfaces':{'tinted':['card','muted'],'rule':'cards on a tinted panel'},'elevation':{'tiers':['flat','raised'],'rule':'raised for tappable'},'accent':{'slots':['primary-cta'],'rule':'accent on the one primary action'},'hero':{'rule':'each screen has one focal moment'},'empty_states':{'rule':'value plus action, never blank'}}"
+# H.1 valid usage block → exit 0
+_usage "$UGOOD"
+python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "valid usage block → exit 0" || bad "valid usage block rejected"
+# H.2 surfaces.tinted empty (the flat-white regression) → block
+_usage "{'surfaces':{'tinted':[],'rule':'x'},'elevation':{'tiers':['flat','raised'],'rule':'x'},'accent':{'slots':['primary-cta'],'rule':'x'},'hero':{'rule':'x'},'empty_states':{'rule':'x'}}"
+OUT="$(python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "tinted" && ok "usage.surfaces.tinted empty → blocked (anti-flat)" || bad "empty tinted surfaces not blocked"
+# H.3 a required rule missing → block
+_usage "{'surfaces':{'tinted':['card'],'rule':'x'},'elevation':{'tiers':['flat','raised'],'rule':'x'},'accent':{'slots':['primary-cta'],'rule':'x'},'hero':{},'empty_states':{'rule':'x'}}"
+OUT="$(python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "hero.rule is required" && ok "usage.hero.rule missing → blocked" || bad "missing usage rule not blocked"
+# H.4 no usage block → still valid (advisory nudge, back-compat)
+_usage None
+python3 "$VA" "$TMP/aes_usage.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "no usage block → exit 0 (warns, back-compat)" || bad "missing usage should warn, not block"
 
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"

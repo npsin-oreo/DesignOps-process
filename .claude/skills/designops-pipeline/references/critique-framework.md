@@ -12,16 +12,17 @@ Always run the scored review first; use the layers to find the specifics.
 
 > Full rubric + Nielsen tables + the review process live in `design-review.md`. Summary:
 
-Score every main screen 1–10 across **six weighted dimensions**, then compute the overall:
+Score every main screen 1–10 across **seven weighted dimensions**, then compute the overall:
 
 | # | Dimension | Weight |
 |---|-----------|--------|
 | 1 | Visual Hierarchy | 20% |
-| 2 | Consistency (token + pattern adherence) | 20% |
+| 2 | Consistency (token + pattern adherence) | 15% |
 | 3 | Accessibility (WCAG 2.2 to `design_directives.a11y_target`) | 20% |
-| 4 | Usability (task efficiency, error prevention, cognitive load) | 20% |
+| 4 | Usability (task efficiency, error prevention, cognitive load) | 15% |
 | 5 | Responsiveness — score against `mobile-usability.md` (touch targets ≥44px, thumb reach, input types, reflow at 320px, no hover-only) | 10% |
 | 6 | Performance (loading/skeleton states, animation efficiency) | 10% |
+| 7 | **Richness / identity usage** — score from what RENDERS against `aesthetic.json`'s `usage` block (track H): tinted surfaces (not flat white-on-white), an elevation hierarchy, the accent actually placed on the primary action, a hero moment per key screen, empty states that carry content. A flat "brand colour on a neutral skeleton" scores LOW here even when tokens are applied — this is the dimension gate 6 can't see. Read the track-I anti-plain render report (`verify_richness.mjs`) as evidence. | 10% |
 
 > **Mobile lens:** for any mobile-first / responsive product, run the screen through
 > `mobile-usability.md` — touch-target size, thumb reachability, correct input types/keyboards,

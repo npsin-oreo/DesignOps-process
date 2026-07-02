@@ -106,6 +106,83 @@ def _load(path):
         return None, f"file not found: {path}"
 
 
+# ── layout axis (optional 7th axis, directive-derived) ─────────────────────────
+# grid / gutter / container / control-height / touch tokens that fix C scaffolds and gate 11 (fix B3)
+# verifies. Validated only when axes.layout is present; outside the coherence source-count (D1).
+LAYOUT_BREAKPOINTS = ("sm", "md", "lg")
+
+
+def _rem(v):
+    """A CSS length like '2.75rem' → 2.75 (float), or None if it isn't a plain rem value."""
+    if not isinstance(v, str):
+        return None
+    s = v.strip().lower()
+    if s.endswith("rem"):
+        try:
+            return float(s[:-3])
+        except ValueError:
+            return None
+    return None
+
+
+def _validate_layout_axis(layout, errors, warnings):
+    """Structure + internal-consistency checks for axes.layout (only runs when the axis is present)."""
+    if not isinstance(layout, dict):
+        errors.append("axes.layout must be an object {source, rationale, resolved} when present")
+        return
+    if not layout.get("rationale"):
+        warnings.append("axes.layout.rationale is empty — say why this layout fits the density/device profile")
+    res = layout.get("resolved")
+    if not isinstance(res, dict):
+        errors.append("axes.layout.resolved is required (the grid/gutter/control tokens fix C scaffolds and "
+                      "gate 11 verifies) — give it grid_cols / gutter / container_max / control_h / touch_min")
+        return
+
+    # grid_cols: three integer breakpoints, non-decreasing (a wider viewport never has fewer columns)
+    gc = res.get("grid_cols")
+    if not isinstance(gc, dict):
+        errors.append("axes.layout.resolved.grid_cols is required — {sm, md, lg} column counts")
+    else:
+        vals = {}
+        for bp in LAYOUT_BREAKPOINTS:
+            n = gc.get(bp)
+            if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+                errors.append(f"axes.layout.resolved.grid_cols.{bp} must be a positive integer, got {n!r}")
+            else:
+                vals[bp] = n
+        if len(vals) == 3 and not (vals["sm"] <= vals["md"] <= vals["lg"]):
+            errors.append(f"axes.layout.resolved.grid_cols must be non-decreasing sm<=md<=lg "
+                          f"(got {vals['sm']}/{vals['md']}/{vals['lg']}) — a wider breakpoint can't have fewer columns")
+
+    # gutter — required, a rem length (so it lands in @theme without tripping gate 1)
+    if not res.get("gutter"):
+        errors.append("axes.layout.resolved.gutter is required (grid/stack gap → --spacing-gutter)")
+    elif _rem(res["gutter"]) is None:
+        warnings.append(f"axes.layout.resolved.gutter {res['gutter']!r} is not a rem value — use rem "
+                        "(not px) so it lands in @theme without tripping gate 1 (no raw px)")
+
+    # container_max — recommended (page + reading widths)
+    cm = res.get("container_max")
+    if not isinstance(cm, dict) or not cm.get("content"):
+        warnings.append("axes.layout.resolved.container_max.content recommended (page max-width → --container-content)")
+
+    # control_h.{mobile,desktop} + touch_min — the parity contract, invariant-checked
+    ch = res.get("control_h")
+    if not isinstance(ch, dict) or not ch.get("mobile") or not ch.get("desktop"):
+        errors.append("axes.layout.resolved.control_h is required — {mobile, desktop} heights "
+                      "(fix C pins every form control to these)")
+        ch = ch if isinstance(ch, dict) else {}
+    tm = res.get("touch_min")
+    if not tm:
+        errors.append("axes.layout.resolved.touch_min is required (minimum tap target → --touch-min)")
+
+    # invariant: touch_min <= control_h.mobile (a tap target can't exceed the control it lives on)
+    tm_v, chm_v = _rem(tm), _rem(ch.get("mobile"))
+    if tm_v is not None and chm_v is not None and tm_v > chm_v:
+        errors.append(f"axes.layout.resolved: touch_min ({tm}) > control_h.mobile ({ch.get('mobile')}) — the "
+                      "mobile control must be at least the tap-target floor (raise control_h.mobile or lower touch_min)")
+
+
 def validate(aesthetic_path, intel_path=None, contract_path=None):
     errors, warnings = [], []
     d, err = _load(aesthetic_path)
@@ -209,6 +286,9 @@ def validate(aesthetic_path, intel_path=None, contract_path=None):
                 errors.append(f"axes span {len(distinct)} systems {sorted(distinct)} — cap is {MAX_AXIS_SOURCES} "
                               "for coherence (one primary backbone + at most one justified override). "
                               "Design languages are coherent wholes; mixing many produces a Frankenstein.")
+            # optional 7th axis: layout (grid/gutter/control-height) — structure + invariant checks (D1)
+            if "layout" in axes:
+                _validate_layout_axis(axes.get("layout"), errors, warnings)
 
     # ── tokens: the full identity color set (light + dark), not just primary ───────
     tok = d["tokens"]
@@ -398,6 +478,11 @@ def main():
         srcs = sorted({(axes.get(ax) or {}).get("source") for ax in axes} - {None})
         print(f"  Axes       : {comp}")
         print(f"  Composition: {len(srcs)} system(s) {srcs} (primary {d.get('primary_system') or dir_.get('name')})")
+        lay = (axes.get("layout") or {}).get("resolved")
+        if isinstance(lay, dict):
+            gc, ch = lay.get("grid_cols") or {}, lay.get("control_h") or {}
+            print(f"  Layout     : grid {gc.get('sm')}/{gc.get('md')}/{gc.get('lg')} · gutter {lay.get('gutter')} · "
+                  f"control {ch.get('mobile')}/{ch.get('desktop')} · touch {lay.get('touch_min')}")
     print(f"  a11y target: {d.get('constraints', {}).get('a11y_target')} · "
           f"contrast pairs verified: {len(d.get('contrast_checks', []))}")
     for w in warnings:

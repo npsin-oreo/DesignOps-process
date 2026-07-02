@@ -14,6 +14,9 @@ Deterministic, substring/regex over globals.css:
   • typography.resolved.heading_weight_cap → that font-weight is applied
   • shape.resolved.pill_slots[]           → each slot has a [data-slot=<slot>] … rounded-full rule
   • motion.resolved.easing                → the easing value is present AND applied to a non-card slot
+  • layout.resolved.{gutter,control_h,…}  → the structure tokens landed in @theme (--spacing-gutter,
+                                            --container-*, --control-h-*, --touch-min); grid_cols is a
+                                            component prop, not a token, so it is not checked here
 
 Usage:
   lint_axis_fidelity.py <globals.css> <aesthetic.json>
@@ -112,8 +115,33 @@ def check(css_path, aes_path):
                 errors.append("motion.resolved.easing is defined but only the card uses it — apply the "
                               "easing to interactive slots (button/link) too, per motion.slots")
 
+    # ── layout (grid/gutter/control-height/touch — the structure axis, fix B/C) ──
+    # These land in @theme as tokens fix C scaffolds and Step 2.6 can override; a committed value that
+    # never reaches globals.css is the same silent no-op we guard against for type/shape/motion.
+    # grid_cols is a <Grid> component prop (not a CSS token), so it is intentionally not checked here.
+    layout = (axes.get("layout") or {}).get("resolved") or {}
+    if layout:
+        container = layout.get("container_max") or {}
+        control = layout.get("control_h") or {}
+        token_map = [
+            ("--spacing-gutter", layout.get("gutter")),
+            ("--container-content", container.get("content")),
+            ("--container-prose", container.get("prose")),
+            ("--control-h-mobile", control.get("mobile")),
+            ("--control-h-desktop", control.get("desktop")),
+            ("--touch-min", layout.get("touch_min")),
+        ]
+        for token, val in token_map:
+            if not val:
+                continue  # optional/uncommitted metric (e.g. container_max.prose) → nothing to verify
+            checked += 1
+            if not re.search(rf"{re.escape(token)}\s*:\s*{re.escape(str(val))}\b", css, re.I):
+                errors.append(f"layout.resolved token {token} = {val} is not applied in globals.css @theme "
+                              "— re-point @theme so the grid/control tokens land (fix C scaffolds the "
+                              "defaults; a Step 2.6 layout override must reach globals.css too)")
+
     if not errors:
-        notes.append(f"{checked} axis metric(s) applied in the build (typography/shape/motion)")
+        notes.append(f"{checked} axis metric(s) applied in the build (typography/shape/motion/layout)")
     return errors, notes
 
 

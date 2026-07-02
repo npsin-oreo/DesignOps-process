@@ -681,6 +681,54 @@ python3 "$LAF" "$TMP/axes_import.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && ok
 printf '@import "@npsin-oreo/design-system/styles.css";\n' > "$TMP/axes_pkgonly.css"
 python3 "$LAF" "$TMP/axes_pkgonly.css" "$TMP/axes_aes.json" >/dev/null 2>&1 && bad "package @import must not satisfy axes" || ok "package @import not followed → axes still blocked (gate 11)"
 
+# ── T21. layout axis (fix B) — validate_aesthetic invariants (B2) + gate 11 tokens (B3) ──
+echo "[T21] layout axis — validate_aesthetic invariants (B2) + gate 11 tokens (B3)"
+# reuse the valid $TMP/aesthetic.json (direction.name=linear-app); attach the required 6 axes + a
+# directive-derived layout axis whose resolved block we vary.
+_layout() {  # $1 = python literal for layout.resolved, or None to omit resolved
+  python3 -c "
+import json
+d=json.load(open('$TMP/aesthetic.json'))
+d['primary_system']='linear-app'
+six={ax:{'source':'linear-app','rationale':'fits'} for ax in ['color','typography','shape','elevation','spacing','motion']}
+lay={'source':'intelligence','rationale':'fits'}
+res=$1
+if res is not None: lay['resolved']=res
+six['layout']=lay
+d['axes']=six
+json.dump(d,open('$TMP/aes_layout.json','w'))"
+}
+GOOD="{'grid_cols':{'sm':4,'md':8,'lg':12},'gutter':'1.5rem','container_max':{'content':'80rem','prose':'48rem'},'control_h':{'mobile':'3rem','desktop':'2.5rem'},'touch_min':'2.75rem'}"
+# B2.1 valid layout axis → exit 0 (and back-compat: the 6 required axes still validate alongside it)
+_layout "$GOOD"
+python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" >/dev/null 2>&1 && ok "valid layout axis (7th, directive-derived) → exit 0" || bad "valid layout axis rejected"
+# B2.2 touch_min (2.75rem) > control_h.mobile (2.5rem) → block (a tap target can't exceed its control)
+_layout "{'grid_cols':{'sm':4,'md':8,'lg':12},'gutter':'1.5rem','control_h':{'mobile':'2.5rem','desktop':'2.5rem'},'touch_min':'2.75rem'}"
+OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "touch_min" && ok "touch_min > control_h.mobile → blocked (invariant)" || bad "touch/control invariant not enforced"
+# B2.3 grid_cols not non-decreasing (12/8/4) → block
+_layout "{'grid_cols':{'sm':12,'md':8,'lg':4},'gutter':'1.5rem','control_h':{'mobile':'3rem','desktop':'2.5rem'},'touch_min':'2.75rem'}"
+OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "non-decreasing" && ok "grid_cols must be non-decreasing sm<=md<=lg → blocked" || bad "grid ordering not enforced"
+# B2.4 layout present but resolved missing → block (the whole point of the axis)
+_layout None
+OUT="$(python3 "$VA" "$TMP/aes_layout.json" "$TMP/aes_intel.json" 2>&1)"; echo "$OUT" | grep -q "resolved is required" && ok "layout without resolved → blocked" || bad "missing resolved not blocked"
+# B3 — gate 11: the committed layout tokens must actually land in globals.css @theme (else silent no-op)
+cat > "$TMP/layout_aes.json" <<'JSON'
+{"axes":{"layout":{"resolved":{"gutter":"1.5rem","container_max":{"content":"80rem"},"control_h":{"mobile":"3rem","desktop":"2.5rem"},"touch_min":"2.75rem"}}}}
+JSON
+cat > "$TMP/layout_ok.css" <<'CSS'
+@theme { --spacing-gutter: 1.5rem; --container-content: 80rem; --control-h-mobile: 3rem; --control-h-desktop: 2.5rem; --touch-min: 2.75rem; }
+CSS
+python3 "$LAF" "$TMP/layout_ok.css" "$TMP/layout_aes.json" >/dev/null 2>&1 && ok "layout tokens applied in @theme → exit 0 (gate 11)" || bad "applied layout tokens wrongly blocked"
+# drift: committed gutter 1.5rem but the build shipped 1rem → the no-op gate 11 exists to catch
+sed 's/--spacing-gutter: 1.5rem/--spacing-gutter: 1rem/' "$TMP/layout_ok.css" > "$TMP/layout_drift.css"
+OUT="$(python3 "$LAF" "$TMP/layout_drift.css" "$TMP/layout_aes.json" 2>&1)"; echo "$OUT" | grep -q "spacing-gutter" && ok "layout token drift (declared 1.5rem, built 1rem) → blocked (gate 11)" || bad "layout token drift not blocked"
+# grid_cols is a component prop, not a CSS token → it must NOT be required in globals.css
+cat > "$TMP/layout_gridonly_aes.json" <<'JSON'
+{"axes":{"layout":{"resolved":{"grid_cols":{"sm":4,"md":8,"lg":12},"gutter":"1.5rem"}}}}
+JSON
+printf '@theme { --spacing-gutter: 1.5rem; }\n' > "$TMP/layout_grid.css"
+python3 "$LAF" "$TMP/layout_grid.css" "$TMP/layout_gridonly_aes.json" >/dev/null 2>&1 && ok "grid_cols not treated as a token (component prop) → exit 0" || bad "grid_cols wrongly required as a CSS token"
+
 # ── result ────────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
